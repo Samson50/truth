@@ -1,15 +1,28 @@
 import os
 import sys
 import time
+from dbPopulate import DBPopulate
 
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium import webdriver
 
 class CongressScraper:
     def __init__(self):
+        self.populator = DBPopulate()
         self.important_index = 0
         self.names = []
         self.congr = {}
+        self.stateDict = {'ALABAMA':'AL','ALASKA':'AK','ARIZONA':'AZ','ARKANSAS':'AR','CALIFORNIA':'CA','COLORADO':'CO',
+                          'CONNECTICUT':'CT','DELAWARE':'DE','FLORIDA':'FL','GEORGIA':'GA','HAWAII':'HI','IDAHO':'ID',
+                          'ILLINOIS':'IL','INDIANA':'IN','IOWA':'IA','KANSAS':'KS','KENTUCKY':'KY','LOUISIANA':'LA','MAINE':'ME',
+                          'MARYLAND':'MD','MASSACHUSETTS':'MA','MICHIGAN':'MI','MINNESOTA':'MN','MISSISSIPPI':'MS','MISSOURI':'MO',
+                          'MONTANA':'MT','NEBRASKA':'NE','NEVADA':'NV','NEW HAMPSHIRE':'NH','NEW JERSEY':'NJ','NEW MEXICO':'NM',
+                          'NEW YORK':'NY','NORTH CAROLINA':'NC','NORTH DAKOTA':'ND','OHIO':'OH','OKLAHOMA':'OK','OREGON':'OR',
+                          'PENNSYLVANIA':'PA','RHODE ISLAND':'RI','SOUTH CAROLINA':'SC','SOUTH DAKOTA':'SD','TENNESSEE':'TN',
+                          'TEXAS':'TX','UTAH':'UT','VERMONT':'VT','VIRGINIA':'VA','WASHINGTON':'WA','WEST VIRGINIA':'WV',
+                          'WISCONSIN':'WI','WYOMING':'WY','NORTHERN MARIANA ISLANDS':'MP','GUAM':'GU','PUERTO RICO':'PR',
+                          'VIRGIN ISLANDS':'VI','AMERICAN SAMOA':'AS','DISTRICT OF COLUMBIA':'DC','PALAU':'PW',
+                          'FEDERATED STATES OF MICRONESIA':'FM','MARSHALL ISLANDS':'MH'}
         print "CongressScraper Initializing"
         os.environ['MOZ_HEADLESS'] = '1'
         print "os.environ['MOZ_HEADLESS'] = '1'"
@@ -34,8 +47,8 @@ class CongressScraper:
             lname = names[0]
             comms = [com[:-1] for com in committees[c*2+1].text.split('\n')]
             name = fname + ' ' + lname
-            if name in self.congr.keys():
-                self.congr[name]['Committees'] = comms
+            if name in self.congr.keys() and '' not in comms:
+                self.congr[name]['committees'] = comms
 
 
     def addCongress(self, name, items):
@@ -59,9 +72,9 @@ class CongressScraper:
                 for service in services:
                     ser = service.split(': ')[0]
                     ter = service.split(': ')[1].split('-')
-                    if 'Senate:' in ser:
+                    if 'Senate' in ser:
                         vals['s'] = int(ter[0])
-                    elif 'House:' in ser:
+                    elif 'House' in ser:
                         vals['h'] = int(ter[0])
         self.congr[name] = vals                                              
 
@@ -82,16 +95,32 @@ class CongressScraper:
         self.scrapePage("https://www.congress.gov/members?q=%7B%22congress%22%3A%22115%22%7D&pageSize=250&page=3")
         self.addCommittee()
         
+    def populateDB(self):
+        self.getCongress()
+        for name in self.congr:
+            fname = name.split()[0]
+            lname = ' '.join(name.split()[1:])
+            if '"' in lname:
+                lname = lname.split('"')[0].strip() + lname.split('"')[1]
+            datum = self.congr[name]
+            #"(FirstName, LastName, Party, State, Job)"
+            SoH = ''
+            if 's' in datum.keys():
+                SoH = "S"
+            elif 'h' in datum.keys():
+                if SoH != '' and datum['h'] > datum['s']: SoH = "H"
+                else: SoH = "H"
+            party = datum['party']
+            state = self.stateDict[datum['state'].upper()]
+            self.populator.insertLeg(fname,lname,party,state,SoH)
+            if 'committees' in datum.keys():
+                for comm in datum['committees']:
+                    if ', Chair' in comm:
+                        comm = comm.split(', Chair')[0]
+                    self.populator.insertCombo(fname,lname,comm)
 
     def runTest(self):
-        self.getCongress()
-        for con in  self.congr: 
-            print con
-            for dat in self.congr[con]:
-                if 'Committees' in dat:
-                    print self.congr[con][dat]
-                else:
-                    print dat
+        self.populateDB()
 
     def close(self):
         self.driver.quit()

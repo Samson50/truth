@@ -71,12 +71,10 @@ class BillScraper:
     def fetch(self, string):
         print "Retrieving: "+string
         self.driver.get(string)
-        print "Retrieved"
 
     def findElements(self, code, search):
         print "Finding element: "+search
         return self.driver.find_elements(code, search)
-        print "found"
 
     def getText(self, elem):
         return ''.join(elem.get_property('textContent').strip('[]').split(','))
@@ -101,17 +99,15 @@ class BillScraper:
         else: congNum = str(congNum)+'th'
         self.fetch("https://www.congress.gov/bill/%s-congress/%s/%s/all-info"%(str(congNum), billType, billNum))
 
-    def getBillsForCongress(self, congNum):
-        pageNum = 2
-        self.fetch("https://www.congress.gov/search?q=%7B%22source%22%3A%22legislation%22%2C%22congress%22%3A%22"+(str(congNum))+"%22%7D&pageSize=250&page="+str(pageNum))
-        bills = int(''.join(self.findElements("xpath", '//div[@id="searchTune"]/div/span')[0].get_property('textContent').strip()[-6:].strip().split(',')))
-        pages = bills/250 + 1
+    def getBillsForCongress(self, congNum, numBills):
+        pages = numBills/250 + 1
         for p in range(1, pages+1):
             self.scrapeForBills(congNum, p)
 
     def printInfo(self, ans):
         for x in ans:
-            print(x.get_property('textContent').strip())
+            print ans[x]
+            print x
             
     def scrapeForBills(self, congNum, pageNum):
         self.fetch("https://www.congress.gov/search?q=%7B%22source%22%3A%22legislation%22%2C%22congress%22%3A%22"+(str(congNum))+"%22%7D&pageSize=250&page="+str(pageNum))
@@ -128,16 +124,16 @@ class BillScraper:
             e = action[x].get_property('textContent').strip()[14:-13].strip()
             self.allBills.append(Bill(a, b, c, d, e))
 
-    def scrapePage(self, target):
-        self.fetch(target)
+    def getAllBills(self):
+        self.fetch("https://www.congress.gov/search?q")
         numBills = self.findElements("xpath", '//div[@id="facetbox_congress"]/ul/li/label/a/span')
         congrVals = self.correlate(numBills)
-        self.printInfo(congrVals)
-        self.important_index = 0
+        for con in congrVals:
+            self.getBillsForCongress(con, congrVals[con])
 
     def runTest(self):
-        #self.scrapePage("https://www.congress.gov/search?q")
-        self.scrapeForBills(115, 1)
+        self.scrapePage()
+        #self.scrapeForBills(115, 1)
         #self.printInfo(work)
 
     def close(self):
