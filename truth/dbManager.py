@@ -7,7 +7,7 @@ class DBManager:
         self.cursor = self.cnx.cursor()
         self.committees = ['Agriculture','Appropriations','Armed Services','Budget','Education and the Workforce',
                           'Energy and Commerce','Ethics','Financial Services','Foreign Affairs','Homeland Security',
-                          'House Administration','Judiciary','Natural Resources','Oversight and Government Reform','Rules',
+                          'Administration','Judiciary','Natural Resources','Oversight and Government Reform','Rules',
                           'Science, Space, and Technology','Small Business','Transportation and Infrastructure',
                           'Veterans\' Affairs','Ways and Means','Rules and Administration','Small Business and Entrepreneurship',
                           'Commerce, Science, and Transportation','Energy and Natural Resources','Environment and Public Works','Finance',
@@ -78,7 +78,7 @@ class DBManager:
         try:
             arguments =   ("CREATE TABLE Bill ("
                                 "BillID int auto_increment primary key,"
-                                "Name char(10),"
+                                "Name char(15),"
                                 "Congress int,"
                                 "Sponsor int," # References LegID
                                 "Summary char(255),"
@@ -232,7 +232,7 @@ class DBManager:
             arguments =   ("CREATE TABLE RelatedBill ("
                                 "RelatedID int auto_increment primary key,"
                                 "BillID int,"
-                                "RBID int"
+                                "RBName chr(15)"
                                 ");"
                             )
             self.cursor.execute(arguments)
@@ -282,8 +282,8 @@ class DBManager:
 
 
 test = DBManager()
-test.drop('bill')
-test.createBill()
+test.drop('all')
+test.createAll()
 test.close()
 #test.createComm()
 #test.populateCommittee()

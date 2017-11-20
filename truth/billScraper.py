@@ -6,55 +6,13 @@ from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium import webdriver
 from dbPopulate import DBPopulate
 
-class Bill:
-    def __init__(self, bid, summ, spon, comm, acti):
-        self.bid = bid
-        self.num = bid.split('.')[-1]
-        self.summ = summ 
-        self.spon = self.breakSpon(spon) 
-        self.comm = self.breakComm(comm) 
-        self.acti = acti 
-        self.type = self.getType(bid)
-        
-    def __str__(self):
-        return "ID: "+self.bid+"\nSummary: "+self.summ+"\nSponsor: "+str(self.spon)+"\nCommittees: "+str(self.comm)+"\nAction: "+self.acti
-        
-    def breakSpon(self, spon):
-        mSpon = spon.split()[2] + ' ' + spon.split()[1][:-1]
-        #cSpon = spon.split('Cosponsors: ')
-        #if '(0)' not in cSpon:
-        return mSpon
+def sanitize(text):
+    if '"' in text:
+        text = ''.join(text.split('"'))
+    #if "'" in text:
+    #    text = '\''.join(text.split("'"))
+    return text 
     
-    def breakComm(self, com):
-        comm = com
-        sen = []
-        if 'Senate - ' in comm:
-            sen = comm.split('Senate - ')[1].split(', ')
-            comm = comm.split('Senate - ')[0]
-            for x in range(0,len(sen)):
-                sen[x] = 'S-'+sen[x]
-        comm = comm[8:].split(', ') + sen
-        return comm 
-    
-    def getType(self, bid):
-        if 'H.R.' in bid: self.type = 'house-bill'
-        elif 'H.Amdt.' in bid: self.type = 'house-amendment'
-        elif 'H.Res.' in bid: self.type = 'house-resolution'
-        elif 'H.J.Res.' in bid: self.type = 'house-joint-resolution'
-        elif 'H.Con.Res.' in bid: self.type = 'house-concurrent-resolution'
-        elif 'S.R.' in bid: self.type = 'senate-bill'
-        elif 'S.Amdt.' in bid: self.type = 'senate-amendment'
-        elif 'S.Res.' in bid: self.type = 'senate-resolution'
-        elif 'S.J.Res.' in bid: self.type = 'senate-joint-resolution'
-        elif 'S.Con.Res.' in bid: self.type = 'senate-concurrent-resolution'
-        else: print("Can't find type for :"+bid)
-        
-    def getAllData(self, driver, cong):
-        driver.get("https://www.congress.gov/bill/"+cong+"-congress/"+self.type+"/"+self.num+"/all-info")
-        driver.find_elements('xpath', '')
-        driver.get("https://www.congress.gov/bill/"+cong+"-congress/"+self.type+"/"+self.num+"/text")
-        
-        
         
 
 class BillScraper:
@@ -74,7 +32,6 @@ class BillScraper:
         self.driver.get(string)
 
     def findElements(self, code, search):
-        print "Finding element: "+search
         return self.driver.find_elements(code, search)
 
     def getText(self, elem):
@@ -120,7 +77,6 @@ class BillScraper:
         
     def getBillDetails(self, billLink, billID, conNum):
         self.fetch(billLink)
-        title = self.findElements('xpath', '//div[@id="titles-content"]/div/div/div/div/div/p') # Title (First Only for now)
         actions = self.findElements('xpath', '//div[@id="allActions-content"]/div/table/tbody/tr/td') # AllActions (date and action, drop 'Action By:'
         cosponsors = self.findElements('xpath', '//div[@id="cosponsors-content"]/div/table/tbody/tr/td/a') # Cosponsors
         committees = self.findElements('xpath', '//div[@id="committees-content"]/div/div/table/tbody/tr[@class="committee"]/th') # Committees
@@ -128,41 +84,46 @@ class BillScraper:
         subjects = self.findElements('xpath', '//div[@id="subjects-content"]/div/ul/li/a') # Policy Area
         for act in range(0,len(actions)/2):
             date = actions[act*2].text
-            action = actions[act*2+1].text.split('\n')[0] 
+            action = sanitize(actions[act*2+1].text.split('\n')[0]) 
             actBy = actions[act*2+1].text.split('\n')[1][11:]
             self.populator.insertAction(billID,date,action,actBy)
         for spon in cosponsors:
             leg = spon.text[5:].split(' [')[0]
-            fname = leg.split(', ')[1]
-            lname = leg.split(', ')[0]
-            if '.' in fname:
-                lname = fname.split()[1]+" "+lname
-                fname = fname.split()[0]
+            leg = leg.split(', ')[1]+" "+leg.split(', ')[0]
+            fname = leg.split()[0]
+            lname = sanitize(' '.join(leg.split()[1:]))
             self.populator.insertCosponsor(fname, lname, billID)
-        for comm in committees:
-            self.populator.insertComboBill(billID, comm.text.strip())
+        for comm in committees:#TODO: Deal with ()
+            comm = comm.text
+            if 'House ' in comm:
+                comm = comm[6:]
+            elif 'Senate ' in comm:
+                comm = comm[7:]
+            if '(' in comm:
+                comm = comm.split(' (')[0]
+            self.populator.insertComboBill(billID, comm.strip())
         for bill in realatedBills:
             self.populator.insertRelatedBill(billID, bill.text.strip(), conNum) 
         for subject in subjects:
-            self.populator.insertPolicy(billID, subject.text.strip())
+            self.populator.insertBillPolicy(billID, subject.text.strip())
         
             
     def scrapeForBills(self, congNum, pageNum):
         self.fetch("https://www.congress.gov/search?q=%7B%22source%22%3A%22legislation%22%2C%22congress%22%3A%22"+(str(congNum))+"%22%7D&pageSize=250&page="+str(pageNum))
-        links = self.findElements('xpath', '//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a')
-        sponsors = self.findElements("xpath", '//div[@id="main"]/ol/li[@class="expanded"]/span[3]') # Sponsor + Cosponsor
-        brief = self.findElements("xpath", '//div[@id="main"]/ol/li[@class="expanded"]/span[2]') # Brief
-        for link in range(0,1):#len(links):
-            billLink = links[link].get_attribute('href').split('?')[0]+'/all-info'
+        links = [ x.get_attribute('href') for x in self.findElements('xpath', '//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a')]
+        sponsors = [x.text[9:] for x in self.findElements("xpath", '//div[@id="main"]/ol/li[@class="expanded"]/span[3]')] # Sponsor + Cosponsor
+        brief = [x.text.strip() for x in self.findElements("xpath", '//div[@id="main"]/ol/li[@class="expanded"]/span[2]')] # Brief
+        for link in range(0,len(links)):
+            billLink = links[link].split('?')[0]+'/all-info'
             billName = self.getType(billLink.split('/')[5])+billLink.split('/')[6]
             conNum = int(filter(str.isdigit, str(billLink.split('/')[4])))
-            sponsor = ' '.join(sponsors[link].text[9:].split(' [')[0].split()[1:])
-            title = brief[link].text.strip()
-            fname = sponsor.split(', ')[1]
-            lname = sponsor.split(', ')[0]
-            if '.' in fname:
-                lname = fname.split()[1]+" "+lname
-                fname = fname.split()[0]
+            sponsor = ' '.join(sponsors[link].split(' [')[0].split()[1:])
+            name = sponsor.split(', ')[1]+" "+sponsor.split(', ')[0]
+            fname = name.split()[0]
+            lname = sanitize(' '.join(name.split()[1:]))
+            title = sanitize(brief[link])
+            if len(title) > 255: title = title[0:254]
+            
             self.populator.insertBill(billName, conNum, fname, lname, title)
             billID = self.populator.getBillID(billName, conNum)
             self.getBillDetails(billLink, billID, conNum)

@@ -82,7 +82,7 @@ class CongressScraper:
         self.fetch(target)
         names = self.findElements("xpath", '//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/span/a')
         names = [name.text for name in names]
-        names = [name.split(', ')[1]+' '+name.split(', ')[0].split()[1] for name in names]
+        names = [name.split(', ')[1]+' '+ ' '.join(name.split(', ')[0].split()[1:]) for name in names]
         self.names.extend(names)
         data = self.findElements("xpath", '//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/div/div/span')
         for x in range(0, len(names)):
@@ -101,7 +101,8 @@ class CongressScraper:
             fname = name.split()[0]
             lname = ' '.join(name.split()[1:])
             if '"' in lname:
-                lname = lname.split('"')[0].strip() + lname.split('"')[1]
+                lname = ''.join(lname.split('"'))
+            #print fname+" - "+lname
             datum = self.congr[name]
             #"(FirstName, LastName, Party, State, Job)"
             SoH = ''
@@ -116,6 +117,7 @@ class CongressScraper:
                 elif SoH == '': 
                     SoH = "H"
                     year = datum['h']
+                    
                 else: 
                     SoH = "S"
                     year = datum['h']

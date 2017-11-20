@@ -27,9 +27,9 @@ class DBPopulate:
         except mysql.connector.errors.ProgrammingError as e:
             print fname+" "+lname+" "+str(e)
         except exceptions.IndexError as e:
-            print fname+" "+lname+" "+str(e)
+            print "getLegID Error: "+fname+" - "+lname+" "+str(e)
         except:
-            print fname+" "+lname+" "+str(sys.exc_info()[0])
+            print "getLegID Error: "+fname+" - "+lname+" "+str(sys.exc_info()[0])
         
     def getComID(self, committee):
         try:
@@ -39,7 +39,7 @@ class DBPopulate:
         except mysql.connector.errors.ProgrammingError as e:
             print committee+" "+e
         except exceptions.IndexError as e:
-            print "getComID Error:"+str(e)
+            print "getComID Error for Com: "+committee+": "+str(e)
         except:
             print "idk "+str(sys.exc_info()[0])
             
@@ -50,6 +50,18 @@ class DBPopulate:
             return self.cursor.fetchall()[0][0]
         except mysql.connector.errors.ProgrammingError as e:
             print "getBillID Error for: "+str(billName)+": "+str(e)
+        except exceptions.IndexError as e:
+            print e
+        except:
+            print "idk "+str(sys.exc_info()[0])
+            
+    def getPolicyID(self, pname):
+        try:
+            argument = ("SELECT PolID FROM PolicyArea where PAName=\""+pname+"\";")
+            self.cursor.execute(argument)
+            return self.cursor.fetchall()[0][0]
+        except mysql.connector.errors.ProgrammingError as e:
+            print "getPolicyID Error for: "+pname+": "+str(e)
         except exceptions.IndexError as e:
             print e
         except:
@@ -86,7 +98,7 @@ class DBPopulate:
             
     def insertBill(self, name, con, fname, lname, summary):
         spon = self.getLegID(fname,lname)
-        print spon
+        #print spon
         try:
             argument = ("INSERT INTO Bill "
                             "(Name, Congress, Sponsor, Summary)"
@@ -94,7 +106,7 @@ class DBPopulate:
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
-            print e
+            print "insertBill Error: "+fname+" - "+lname+" "+str(e)
         except:
             print "idk "+str(sys.exc_info()[0])
             
@@ -106,7 +118,7 @@ class DBPopulate:
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
-            print fname+" "+lname+" bnum: "+str(BillID)+" "+str(e)
+            print "insertCosponsor Error: "+fname+" - "+lname+" bnum: "+str(BillID)+" "+str(e)
         except:
             print "idk "+str(sys.exc_info()[0])
             
@@ -115,7 +127,7 @@ class DBPopulate:
         actDate = date.split('/')[2]+'-'+date.split('/')[0]+'-'+date.split('/')[1]
         try:
             argument = ("INSERT INTO Action (ActionDate, ActionBy, BillID, ActionStr)"
-                                "VALUES ('"+actDate+"', '"+actBy+"', "+str(BillID)+", '"+action+"');")
+                                "VALUES (\""+actDate+"\", \""+actBy+"\", "+str(BillID)+", \""+action+"\");")
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
@@ -138,11 +150,10 @@ class DBPopulate:
             print "idk "+str(sys.exc_info()[0])
             
     def insertRelatedBill(self, BillID, RBName, con):
-        RBID = self.getBillID(RBName, con)
         try:
             argument =   ("INSERT INTO RelatedBill "
-                                "(BillID, RBID)"
-                                "VALUES ("+str(BillID)+", "+str(RBID)+");"
+                                "(BillID, RBName)"
+                                "VALUES ("+str(BillID)+", \""+RBName+"\");"
                         )
             self.cursor.execute(argument)
             self.cnx.commit()
