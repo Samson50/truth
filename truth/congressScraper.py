@@ -105,14 +105,23 @@ class CongressScraper:
             datum = self.congr[name]
             #"(FirstName, LastName, Party, State, Job)"
             SoH = ''
+            year = 0
             if 's' in datum.keys():
                 SoH = "S"
-            elif 'h' in datum.keys():
-                if SoH != '' and datum['h'] > datum['s']: SoH = "H"
-                else: SoH = "H"
+                year = datum['s']
+            if 'h' in datum.keys():
+                if SoH != '' and datum['h'] > datum['s']:#fix this logic
+                    SoH = "H"
+                    year = datum['h']
+                elif SoH == '': 
+                    SoH = "H"
+                    year = datum['h']
+                else: 
+                    SoH = "S"
+                    year = datum['h']
             party = datum['party']
             state = self.stateDict[datum['state'].upper()]
-            self.populator.insertLeg(fname,lname,party,state,SoH)
+            self.populator.insertLeg(fname,lname,party,state,SoH,year)
             if 'committees' in datum.keys():
                 for comm in datum['committees']:
                     if ', Chair' in comm:

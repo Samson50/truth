@@ -16,6 +16,12 @@ class DBManager:
                           'Intelligence','Permanent Select Committee on Intelligence','Joint Economic','Joint Library','Joint Printing',
                           'Joint Taxation','Democratic Whip','Majority Whip','Assistant Democratic Leader','Majority Leader','Democratic Leader',
                           'The Speaker']
+        self.policyAreas = ['Agriculture and Food','Animals','Armed Forces and National Security','Arts, Culture, Religion','Civil Rights and Liberties, Minority Issues',
+                            'Commerce','Congress','Crime and Law Enforcement','Economics and Public Finance','Education','Emergency Management','Energy','Environmental Protection',
+                            'Families','Finance and Financial Sector','Foreign Trade and International Finance','Government Operations and Politics',
+                            'Health','Housing and Community Development','Immigration','International Affairs','Labor and Employment','Law',
+                            'Native Americans','Public Lands and Natural Resources','Science, Technology, Communications','Social Sciences and History'
+                            'Social Welfare','Sports and Recreation','Taxation','Transportation and Public Works','Water Resources Development']
 
     def createLegis(self):
         try:
@@ -26,7 +32,7 @@ class DBManager:
                                 "Party char(1),"
                                 "State char(2),"
                                 "Job char(1),"
-                                "CommitteeID int"
+                                "First int"
                                 ");"
                             )
             self.cursor.execute(legis_table)
@@ -73,7 +79,7 @@ class DBManager:
             arguments =   ("CREATE TABLE Bill ("
                                 "BillID int auto_increment primary key,"
                                 "Name char(10),"
-                                "Year int,"
+                                "Congress int,"
                                 "Sponsor int," # References LegID
                                 "Summary char(255),"
                                 "Issue char(255)"
@@ -86,6 +92,20 @@ class DBManager:
             print e
         except:
             print "idk"+str(sys.exc_info()[0])
+            
+    def insertCommittee(self, name):
+        try:
+            argument = "INSERT INTO Committee (ComName) VALUES (\""+name+"\");"
+            self.cursor.execute(argument)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print e
+        except:
+            print "idk"+str(sys.exc_info()[0])
+            
+    def populateCommittee(self):
+        for name in self.committees:
+            self.insertCommittee(name)
             
     def createComm(self):
         try:
@@ -100,13 +120,11 @@ class DBManager:
             print e
         except:
             print "idk"+str(sys.exc_info()[0])
-            
-    def insertCommittee(self, name):
+        self.populateCommittee()
+        
+    def insertPolicyArea(self, name):
         try:
-            argument =   ("INSERT INTO Committee "
-                                "(ComName)"
-                                "VALUES (\""+name+"\");"
-                        )
+            argument = "INSERT INTO PolicyArea (PAName) VALUES (\""+name+"\");"
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
@@ -114,9 +132,38 @@ class DBManager:
         except:
             print "idk"+str(sys.exc_info()[0])
             
-    def populateCommittee(self):
-        for name in self.committees:
-            self.insertCommittee(name)
+    def populatePolicyArea(self):
+        for name in self.policyAreas:
+            self.insertPolicyArea(name)
+            
+    def createPolicyAreas(self):
+        try:
+            arguments =   ("CREATE TABLE PolicyArea ("
+                                "PolID int auto_increment primary key,"
+                                "PAName char(100)"
+                                ");"
+                            )
+            self.cursor.execute(arguments)
+            self.cnx.commit()
+            self.populatePolicyArea()
+        except mysql.connector.errors.ProgrammingError as e:
+            print e
+        except:
+            print "idk"+str(sys.exc_info()[0])
+        
+    def createBillPolicy(self):
+        try:
+            arguments = ("CREATE TABLE BillPolicy ("
+                            "BPID int auto_increment primary key,"
+                            "PolID int,"
+                            "BillID int"
+                            ");")
+            self.cursor.execute(arguments)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print e
+        except:
+            print "idk"+str(sys.exc_info()[0])
     
     def createCosponsor(self):
         try:
@@ -137,8 +184,10 @@ class DBManager:
         try:
             arguments =   ("CREATE TABLE Action ("
                                 "ActionID int auto_increment primary key,"
+                                "ActionDate DATE,"
+                                "ActionBy char(100),"
                                 "BillID int,"
-                                "ActionStr char(100)"
+                                "ActionStr char(255)"
                                 ");"
                             )
             self.cursor.execute(arguments)
@@ -154,6 +203,36 @@ class DBManager:
                                 "ComboID int auto_increment primary key,"
                                 "LegID int,"
                                 "ComID int"
+                                ");"
+                            )
+            self.cursor.execute(arguments)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print e
+        except:
+            print "idk"+str(sys.exc_info()[0])
+            
+    def createComboBill(self):
+        try:
+            arguments =   ("CREATE TABLE ComboBill ("
+                                "ComboID int auto_increment primary key,"
+                                "BillID int,"
+                                "ComID int"
+                                ");"
+                            )
+            self.cursor.execute(arguments)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print e
+        except:
+            print "idk"+str(sys.exc_info()[0])
+            
+    def createRelatedBill(self):
+        try:
+            arguments =   ("CREATE TABLE RelatedBill ("
+                                "RelatedID int auto_increment primary key,"
+                                "BillID int,"
+                                "RBID int"
                                 ");"
                             )
             self.cursor.execute(arguments)
@@ -187,6 +266,10 @@ class DBManager:
         self.createLegis()
         self.createRoll()
         self.createVote()
+        self.createRelatedBill()
+        self.createComboBill()
+        self.createBillPolicy()
+        self.createPolicyAreas()
     
     def recreateAll(self):
         self.drop('all')
@@ -198,7 +281,10 @@ class DBManager:
 
 
 
-#test = DBManager()
+test = DBManager()
+test.drop('bill')
+test.createBill()
+test.close()
 #test.createComm()
 #test.populateCommittee()
 #test.show('committee')
