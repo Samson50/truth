@@ -1,17 +1,18 @@
 import os
 import sys
 import time
-#import platform
-#import urllib
+
 
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium import webdriver
+from dbPopulate import DBPopulate
 #from time import accept2dyear
 
 # http://clerk.house.gov/evs/2015/index.asp
 
 class VoteScraper:
     def __init__(self):
+        self.populator = DBPopulate()
         print "VoteScraper Initializing"
         os.environ['MOZ_HEADLESS'] = '1'
         print "os.environ['MOZ_HEADLESS'] = '1'"
@@ -20,7 +21,7 @@ class VoteScraper:
         self.driver = webdriver.Firefox(firefox_binary=binary)
         
     def fetch(self, string):
-        print '\n'#"Retrieving: "+string
+        print "Retrieving: "+string
         self.driver.get(string)
 
     def findElements(self, code, search):
@@ -35,6 +36,7 @@ class VoteScraper:
             vid = year*1000000+voteNum*10+1
         else:
             vid = year*1000000+voteNum*10+0
+        #self.populator.insertRoll(vid, question, issue)
         print date 
         print str(year)+": VID - "+str(vid)+" Issue: "+issue
         print question 
@@ -44,11 +46,24 @@ class VoteScraper:
             vid = year*1000000+voteNum*10+1
         else:
             vid = year*1000000+voteNum*10+0
-        if SoH == 'S':
-            print "Senate: Votes for %d, vote ID %d: %d" % (year, vid, len(votes))
-        if SoH == 'H':
-            print "House: Votes for %d, vote ID %d: %d" % (year, vid, len(votes))
-        #print votes 
+        for name in votes.keys()[:10]:
+            state = ''
+            fname = ''
+            lname = ''
+            voter = name #Should be votes.keys()
+            if '(' in name:
+                name = voter.split(' (')[0]
+                state = voter.split(' (')[1][:-1]
+                if '-' in state: state = state.split('-')[1]
+            if ',' in name:
+                name = name.split(', ')[1]+' '+name.split(', ')[0]
+                fname = name.split()[0]
+                lname = ' '.join(name.split()[1:])
+            else:
+                lname = name
+            print fname+" - "+lname
+            print state+" "+str(vid)
+            #self.populator.insertVote(vid, votes[name], fname, lname, state, SoH)
     
     def getVotesHouse(self, year, rollNum):
         self.fetch('http://clerk.house.gov/evs/'+str(year)+'/roll'+str(rollNum).zfill(3)+'.xml')

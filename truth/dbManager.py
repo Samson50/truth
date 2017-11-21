@@ -15,20 +15,20 @@ class DBManager:
                           'Banking, Housing, and Urban Affairs','Agriculture, Nutrition, and Forestry','Aging','Ethics','Indian Affairs',
                           'Intelligence','Permanent Select Committee on Intelligence','Joint Economic','Joint Library','Joint Printing',
                           'Joint Taxation','Democratic Whip','Majority Whip','Assistant Democratic Leader','Majority Leader','Democratic Leader',
-                          'The Speaker']
+                          'The Speaker','International Relations','Government Reform','Resources','Science','Governmental Affairs']
         self.policyAreas = ['Agriculture and Food','Animals','Armed Forces and National Security','Arts, Culture, Religion','Civil Rights and Liberties, Minority Issues',
                             'Commerce','Congress','Crime and Law Enforcement','Economics and Public Finance','Education','Emergency Management','Energy','Environmental Protection',
                             'Families','Finance and Financial Sector','Foreign Trade and International Finance','Government Operations and Politics',
                             'Health','Housing and Community Development','Immigration','International Affairs','Labor and Employment','Law',
-                            'Native Americans','Public Lands and Natural Resources','Science, Technology, Communications','Social Sciences and History'
+                            'Native Americans','Public Lands and Natural Resources','Science, Technology, Communications','Social Sciences and History',
                             'Social Welfare','Sports and Recreation','Taxation','Transportation and Public Works','Water Resources Development']
 
     def createLegis(self):
         try:
             legis_table =   ("CREATE TABLE Legislator ("
                                 "LegID int auto_increment primary key,"
-                                "FirstName char(50),"
-                                "LastName char(50),"
+                                "FirstName char(60),"
+                                "LastName char(60),"
                                 "Party char(1),"
                                 "State char(2),"
                                 "Job char(1),"
@@ -78,11 +78,11 @@ class DBManager:
         try:
             arguments =   ("CREATE TABLE Bill ("
                                 "BillID int auto_increment primary key,"
-                                "Name char(15),"
+                                "Name char(20),"
                                 "Congress int,"
                                 "Sponsor int," # References LegID
-                                "Summary char(255),"
-                                "Issue char(255)"
+                                "Summary char(255)"
+                                #"FullText TEXT" #MAX: 9457090 MED 16,777,215
                                 #"FullText ???"
                                 ");"
                             )
@@ -232,7 +232,7 @@ class DBManager:
             arguments =   ("CREATE TABLE RelatedBill ("
                                 "RelatedID int auto_increment primary key,"
                                 "BillID int,"
-                                "RBName chr(15)"
+                                "RBName char(20)"
                                 ");"
                             )
             self.cursor.execute(arguments)
@@ -282,8 +282,7 @@ class DBManager:
 
 
 test = DBManager()
-test.drop('all')
-test.createAll()
+test.recreateAll()
 test.close()
 #test.createComm()
 #test.populateCommittee()

@@ -27,7 +27,8 @@ class DBPopulate:
         except mysql.connector.errors.ProgrammingError as e:
             print fname+" "+lname+" "+str(e)
         except exceptions.IndexError as e:
-            print "getLegID Error: "+fname+" - "+lname+" "+str(e)
+            #print "getLegID Error: "+fname+" - "+lname+" "+str(e)
+            return 0
         except:
             print "getLegID Error: "+fname+" - "+lname+" "+str(sys.exc_info()[0])
         
@@ -40,6 +41,7 @@ class DBPopulate:
             print committee+" "+e
         except exceptions.IndexError as e:
             print "getComID Error for Com: "+committee+": "+str(e)
+            return 0
         except:
             print "idk "+str(sys.exc_info()[0])
             
@@ -66,6 +68,56 @@ class DBPopulate:
             print e
         except:
             print "idk "+str(sys.exc_info()[0])
+            
+    def getLegIDVar(self, fname, lname, state, SoH):
+        if fname!= '':
+            if state != '':
+                try: 
+                    argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND LastName LIKE \""+lname+"\" AND State = \""+state+"\" AND Job=\""+SoH+"\";")
+                    self.cursor.execute(argument)
+                    return self.cursor.fetchall()[0][0]
+                except mysql.connector.errors.ProgrammingError as e:
+                    print "getLegIDVar Error: "+fname+" - "+lname+" :"+state+" "+str(e)
+                except exceptions.IndexError as e:
+                    print "getLegIDVar Error: "+fname+" - "+lname+" :"+state+" "+str(e)
+                except:
+                    print "getLegIDVar Error: "+fname+" - "+lname+" :"+state+" "+str(sys.exc_info()[0])
+    
+            else:
+                try:
+                    argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND LastName LIKE \""+lname+"\" AND Job=\""+SoH+"\";")
+                    self.cursor.execute(argument)
+                    return self.cursor.fetchall()[0][0]
+                except mysql.connector.errors.ProgrammingError as e:
+                    print "getLegIDVar Error: "+fname+" - "+lname+" :"+str(e)
+                except exceptions.IndexError as e:
+                    print "getLegIDVar Error: "+fname+" - "+lname+" :"+str(e)
+                except:
+                    print "getLegIDVar Error: "+fname+" - "+lname+" :"+str(sys.exc_info()[0])
+        elif state != '':
+            try: 
+                argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND State = \""+state+"\" AND Job=\""+SoH+"\";")
+                self.cursor.execute(argument)
+                return self.cursor.fetchall()[0][0]
+            except mysql.connector.errors.ProgrammingError as e:
+                print "getLegIDVar Error: "+fname+" :"+state+" "+str(e)
+            except exceptions.IndexError as e:
+                print "getLegIDVar Error: "+fname+" :"+state+" "+str(e)
+            except:
+                print "getLegIDVar Error: "+fname+" :"+state+" "+str(sys.exc_info()[0])
+    
+        else: 
+            try: 
+                argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND Job=\""+SoH+"\";")
+                self.cursor.execute(argument)
+                return self.cursor.fetchall()[0][0]
+            except mysql.connector.errors.ProgrammingError as e:
+                print "getLegIDVar Error: "+fname+" :"+str(e)
+            except exceptions.IndexError as e:
+                print "getLegIDVar Error: "+fname+" :"+str(e)
+            except:
+                print "getLegIDVar Error: "+fname+" :"+str(sys.exc_info()[0])
+
         
 
     def insertLeg(self, fname, lname, party, state, SoH, year):
@@ -77,9 +129,9 @@ class DBPopulate:
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
-            print "Legislator: "+fname+" "+lname+" "+str(e)
+            print "insertLeg Error: "+fname+" "+lname+" "+str(e)
         except:
-            print "idk "+str(sys.exc_info()[0])
+            print "insertLeg Error: "+str(sys.exc_info()[0])
             
     def insertCombo(self, fname, lname, commName):
         LegID = self.getLegID(fname,lname)
@@ -108,10 +160,11 @@ class DBPopulate:
         except mysql.connector.errors.ProgrammingError as e:
             print "insertBill Error: "+fname+" - "+lname+" "+str(e)
         except:
-            print "idk "+str(sys.exc_info()[0])
+            print "insertBill Error: "+str(sys.exc_info()[0])
             
     def insertCosponsor(self, fname, lname, BillID):
         LegID = self.getLegID(fname,lname)
+        if LegID == 0: return
         try:
             argument = ("INSERT INTO Cosponsor (BillID, LegID)"
                                 "VALUES ("+str(BillID)+","+str(LegID)+");")
@@ -120,10 +173,11 @@ class DBPopulate:
         except mysql.connector.errors.ProgrammingError as e:
             print "insertCosponsor Error: "+fname+" - "+lname+" bnum: "+str(BillID)+" "+str(e)
         except:
-            print "idk "+str(sys.exc_info()[0])
+            print "insertCosponsor Error: "+str(sys.exc_info()[0])
             
     def insertAction(self, BillID, date, action, actBy):
         if len(action) > 255: action = action[0:255]
+        if '-' in date: date = date.split('-')[0]
         actDate = date.split('/')[2]+'-'+date.split('/')[0]+'-'+date.split('/')[1]
         try:
             argument = ("INSERT INTO Action (ActionDate, ActionBy, BillID, ActionStr)"
@@ -133,10 +187,11 @@ class DBPopulate:
         except mysql.connector.errors.ProgrammingError as e:
             print "Action error for Bill: "+str(BillID)+" "+str(e)
         except:
-            print "idk "+str(sys.exc_info()[0])
+            print "Action error: "+str(sys.exc_info()[0])
             
     def insertComboBill(self, BillID, commName):
         ComID = self.getComID(commName)
+        if ComID == 0: return
         try:
             argument =   ("INSERT INTO Combo "
                                 "(LegID, ComID)"
@@ -145,9 +200,9 @@ class DBPopulate:
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
-            print str(BillID)+" Com: "+commName+" "+str(e)
+            print "insertComboBill Error: "+str(BillID)+" Com: "+commName+" "+str(e)
         except:
-            print "idk "+str(sys.exc_info()[0])
+            print "insertComboBill Error: "+str(sys.exc_info()[0])
             
     def insertRelatedBill(self, BillID, RBName, con):
         try:
@@ -158,9 +213,9 @@ class DBPopulate:
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
-            print str(BillID)+" Related Bill: "+str(RBName)+" "+str(e)
+            print "insertRelatedBill Error: "+str(BillID)+" Related Bill: "+str(RBName)+" "+str(e)
         except:
-            print "idk "+str(sys.exc_info()[0])
+            print "insertRelatedBill Error: "+str(sys.exc_info()[0])
             
     def insertBillPolicy(self, billID, policy):
         policyID = self.getPolicyID(policy)
@@ -172,9 +227,42 @@ class DBPopulate:
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
-            print str(billID)+" Policy Area: "+str(policy)+" "+str(e)
+            print "insertBillPolicy Error: "+str(billID)+" Policy: "+str(policy)+" "+str(e)
         except:
-            print "idk "+str(sys.exc_info()[0])
+            print "insertBillPolicy Error: "+str(sys.exc_info()[0])
+            
+    def insertRoll(self, voteID, question, issue):
+        year = voteID/1000000
+        con = year-1901 - (year%2)
+        billID = self.getBillID(issue, con)
+        if len(question) >= 255: question = question[:255]
+        try: 
+            argument = ("INSERT INTO Roll"
+                        "(VoteNum, Question, Issue)"
+                        "VALUES ("+str(voteID)+", \""+question+"\", "+str(billID)+");")
+            self.cursor.execute(argument)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print "insertRoll Error for: "+str(voteID)+" - "+issue+": "+str(e)
+        except exceptions.IndexError as e:
+            print "insertRoll Error: "+str(e)
+        except:
+            print "insertRoll Error: "+str(sys.exc_info()[0])
+            
+    def insertVote(self, voteID, choice, fname, lname, state, SoH):
+        legID = self.getLegIDVar(fname, lname, state, SoH)
+        try: 
+            argument = ("INSERT INTO Vote (VoteID, Choice, LegID)"
+                         "VALUES ("+str(voteID)+", \""+choice+"\", "+str(legID)+");")
+            self.cursor.execute(argument)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print "insertVote Error for: "+str(voteID)+" Name: "+fname+" - "+lname+": "+str(e)
+        except exceptions.IndexError as e:
+            print "insertVote Error: "+str(e)
+        except:
+            print "insertVote Error: "+str(sys.exc_info()[0])
+
             
     def deleteItem(self, table, cond, itemNo):
         try:

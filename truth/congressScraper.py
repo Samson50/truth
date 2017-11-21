@@ -35,7 +35,7 @@ class CongressScraper:
         self.driver.get(string)
 
     def findElements(self, code, search):
-        print "Finding element: "+search
+        #print "Finding element: "+search
         return self.driver.find_elements(code, search)
     
     def addCommittee(self):
@@ -128,6 +128,8 @@ class CongressScraper:
                 for comm in datum['committees']:
                     if ', Chair' in comm:
                         comm = comm.split(', Chair')[0]
+                    if 'House ' in comm:
+                        comm = ' '.join(comm.split()[1:])
                     self.populator.insertCombo(fname,lname,comm)
 
     def runTest(self):

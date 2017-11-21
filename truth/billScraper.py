@@ -13,19 +13,18 @@ def sanitize(text):
     #    text = '\''.join(text.split("'"))
     return text 
     
-        
 
 class BillScraper:
     def __init__(self, firstCon):
         self.firstCongress = firstCon
         self.populator = DBPopulate()
-        self.allBills = []
         print "BillScraper Initializing"
         os.environ['MOZ_HEADLESS'] = '1'
         print "os.environ['MOZ_HEADLESS'] = '1'"
         binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
         print "binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)"
         self.driver = webdriver.Firefox(firefox_binary=binary)
+        self.congrVals = self.createBillsDict()
 
     def fetch(self, string):
         print "Retrieving: "+string
@@ -38,19 +37,10 @@ class BillScraper:
         return ''.join(elem.get_property('textContent').strip('[]').split(','))
 
     def correlate(self, numBills):#craetes Dict of Congress # to # of bills
-        x = 0
         vals = {}
-        while(115-x >= self.firstCongress):
-            vals[115-x] = int(self.getText(numBills[x]))
-            x += 1
+        for x in range(0, len(numBills)):
+            vals[93+x] = int(self.getText(numBills[x]))
         return vals
-
-    def getBill(self, billNum, congNum, billType):
-        if congNum % 10 == 1: congNum = str(congNum)+'st'
-        elif congNum % 10 == 2: congNum = str(congNum)+'ns'
-        elif congNum % 10 == 3: congNum = str(congNum)+'rd'
-        else: congNum = str(congNum)+'th'
-        self.fetch("https://www.congress.gov/bill/%s-congress/%s/%s/all-info"%(str(congNum), billType, billNum))
 
     def getBillsForCongress(self, congNum, numBills):
         pages = numBills/250 + 1
@@ -75,6 +65,26 @@ class BillScraper:
         elif 'senate-concurrent-resolution' in bid: return 'S.Con.Res.'
         else: print("Can't find type for :"+bid)
         
+    def getAction(self, billID, actions):
+        if len(actions) >= 2:
+            if actions[1].text == 'Senate' or actions[1].text == 'House' or actions[1].text.strip() == '':
+                for act in range(0, len(actions)/3):
+                    date = actions[act*3].text
+                    actBy = actions[act*3+1].text.strip()
+                    if actBy != '': actBy = actBy.split()[0]
+                    action = sanitize(actions[act*3+2].text.strip())
+                    if len(action) >= 255: action = action[:255]
+                    self.populator.insertAction(billID,date,action,actBy)
+            else:
+                for act in range(0,len(actions)/2):
+                    date = actions[act*2].text
+                    action = sanitize(actions[act*2+1].text.split('\n')[0]) 
+                    if len(action) >= 255: action = action[:255]
+                    if (actions[act*2+1].text.strip().split('\n')) == 2:
+                        actBy = actions[act*2+1].text.split('\n')[1].strip()
+                    else: actBy = ''
+                    self.populator.insertAction(billID,date,action,actBy)
+        
     def getBillDetails(self, billLink, billID, conNum):
         self.fetch(billLink)
         actions = self.findElements('xpath', '//div[@id="allActions-content"]/div/table/tbody/tr/td') # AllActions (date and action, drop 'Action By:'
@@ -82,11 +92,7 @@ class BillScraper:
         committees = self.findElements('xpath', '//div[@id="committees-content"]/div/div/table/tbody/tr[@class="committee"]/th') # Committees
         realatedBills = self.findElements('xpath', '//div[@id="relatedBills-content"]/div/div/table/tbody/tr/td/a') # RelatedBills
         subjects = self.findElements('xpath', '//div[@id="subjects-content"]/div/ul/li/a') # Policy Area
-        for act in range(0,len(actions)/2):
-            date = actions[act*2].text
-            action = sanitize(actions[act*2+1].text.split('\n')[0]) 
-            actBy = actions[act*2+1].text.split('\n')[1][11:]
-            self.populator.insertAction(billID,date,action,actBy)
+        self.getAction(billID, actions)
         for spon in cosponsors:
             leg = spon.text[5:].split(' [')[0]
             leg = leg.split(', ')[1]+" "+leg.split(', ')[0]
@@ -122,26 +128,53 @@ class BillScraper:
             fname = name.split()[0]
             lname = sanitize(' '.join(name.split()[1:]))
             title = sanitize(brief[link])
-            if len(title) > 255: title = title[0:254]
-            
+            if len(title) >= 255: title = title[0:253]
             self.populator.insertBill(billName, conNum, fname, lname, title)
             billID = self.populator.getBillID(billName, conNum)
             self.getBillDetails(billLink, billID, conNum)
 
-
+    def createBillsDict(self):
+        self.fetch("https://www.congress.gov/search?q=%7B%22source%22%3A%22legislation%22%7D")
+        numBills = self.findElements("xpath", '//div[@id="facetbox_congress"]/ul/li/label/a/span')
+        return self.correlate(numBills)
 
     def getAllBills(self):
-        self.fetch("https://www.congress.gov/search?q")
-        numBills = self.findElements("xpath", '//div[@id="facetbox_congress"]/ul/li/label/a/span')
-        congrVals = self.correlate(numBills)
-        self.getBillsForCongress(115, 10)
-        #for con in congrVals:
-        #    self.getBillsForCongress(con, congrVals[con])
+        lastCon = max(self.congrVals.keys())
+        for con in range(lastCon,93,-1):
+            self.getBillsForCongress(con, self.congrVals[con])
+            
+    def billFromLink(self, link):#Takes simple link to bill
+        billLink = link.split('?')[0]+'/all-info'
+        billName = self.getType(billLink.split('/')[5])+billLink.split('/')[6]
+        conNum = int(filter(str.isdigit, str(billLink.split('/')[4])))
+        self.fetch(billLink)
+        sponsor = self.findElements('xpath', '//div[@id="content"]/div/div/div/table/tbody/tr/td/a')[0].text
+        sponsor = ' '.join(sponsor.split(' [')[0].split()[1:])
+        name = sponsor.split(', ')[1]+" "+sponsor.split(', ')[0]
+        fname = name.split()[0]
+        lname = sanitize(' '.join(name.split()[1:]))
+        title = self.findElements('xpath', '//div[@id="titles_main"]/div/div/div/p')
+        title = sanitize(title[0].text.strip())
+        if len(title) >= 255: title = title[0:253]
+        self.populator.insertBill(billName, conNum, fname, lname, title)
+        billID = self.populator.getBillID(billName, conNum)
+        self.getBillDetails(billLink, billID, conNum)
+        
+    def getBillText(self, billNum, congNum, billType):
+        if congNum % 10 == 1: congNum = str(congNum)+'st'
+        elif congNum % 10 == 2: congNum = str(congNum)+'ns'
+        elif congNum % 10 == 3: congNum = str(congNum)+'rd'
+        else: congNum = str(congNum)+'th'
+        self.fetch("https://www.congress.gov/bill/%s-congress/%s/%s/text"%(str(congNum), billType, billNum))
+        #text = self.findElements('xpath', '//div[@id="main"]/div/table[@class="lbexTableStyleEnr"]')[0]
+        text = self.findElements('xpath', '//div[@id="main"]/div[2]')[0]
+        print len(text.get_attribute('innerHTML'))
 
     def runTest(self):
-        self.getAllBills()
-        #self.scrapeForBills(115, 1)
-        #self.printInfo(work)
+        print "No Test"
+        #self.getAllBills()
+        #self.billFromLink("https://www.congress.gov/bill/115th-congress/house-bill/4448?r=6")
+        
 
     def close(self):
         self.driver.quit()
