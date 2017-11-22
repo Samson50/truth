@@ -1,6 +1,6 @@
 import os
 import sys
-import time
+#import time
 from dbPopulate import DBPopulate
 
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
@@ -31,7 +31,7 @@ class CongressScraper:
         self.driver = webdriver.Firefox(firefox_binary=binary)
 
     def fetch(self, string):
-        print "Retrieving: "+string
+        #print "Retrieving: "+string
         self.driver.get(string)
 
     def findElements(self, code, search):
@@ -96,6 +96,7 @@ class CongressScraper:
         self.addCommittee()
         
     def populateDB(self):
+        print "Populating Legislator table"
         self.getCongress()
         for name in self.congr:
             fname = name.split()[0]
@@ -131,19 +132,21 @@ class CongressScraper:
                     if 'House ' in comm:
                         comm = ' '.join(comm.split()[1:])
                     self.populator.insertCombo(fname,lname,comm)
+        print "Legilator table populated"
 
     def runTest(self):
         self.populateDB()
 
     def close(self):
+        self.populator.close()
         self.driver.quit()
 
-test = CongressScraper()
-run = time.time()
-test.runTest()
-end = time.time()
-print "Test completed in %0.3f seconds." % ((end-run))
-test.close()
+#test = CongressScraper()
+#run = time.time()
+#test.runTest()
+#end = time.time()
+#print "Test completed in %0.3f seconds." % ((end-run))
+#test.close()
 
-print "Exiting"
-print "Closed"
+#print "Exiting"
+#print "Closed"
