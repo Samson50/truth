@@ -5,17 +5,7 @@ class DBManager:
     def __init__(self):
         self.cnx = mysql.connector.connect(user='bob', password='bobwhite', host='localhost', database='federal')
         self.cursor = self.cnx.cursor()
-        self.committees = ['Agriculture','Appropriations','Armed Services','Budget','Education and the Workforce',
-                          'Energy and Commerce','Ethics','Financial Services','Foreign Affairs','Homeland Security',
-                          'Administration','Judiciary','Natural Resources','Oversight and Government Reform','Rules',
-                          'Science, Space, and Technology','Small Business','Transportation and Infrastructure',
-                          'Veterans\' Affairs','Ways and Means','Rules and Administration','Small Business and Entrepreneurship',
-                          'Commerce, Science, and Transportation','Energy and Natural Resources','Environment and Public Works','Finance',
-                          'Foreign Relations','Health, Education, Labor, and Pensions','Homeland Security and Governmental Affairs',
-                          'Banking, Housing, and Urban Affairs','Agriculture, Nutrition, and Forestry','Aging','Ethics','Indian Affairs',
-                          'Intelligence','Permanent Select Committee on Intelligence','Joint Economic','Joint Library','Joint Printing',
-                          'Joint Taxation','Democratic Whip','Majority Whip','Assistant Democratic Leader','Majority Leader','Democratic Leader',
-                          'The Speaker','International Relations','Government Reform','Resources','Science','Governmental Affairs']
+        self.committees = ['Ways and Means','Judiciary','Energy and Commerce','Education and the Workforce','Natural Resources','Foreign Affairs','Transportation and Infrastructure','Financial Services','Oversight and Government Reform','Post Office and Civil Service','Rules','Armed Services','Agriculture','Veterans\' Affairs','Administration','Science, Space, and Technology','Merchant Marine and Fisheries','Appropriations','Small Business','Budget','Homeland Security','District of Columbia','Intelligence (Permanent)','Ethics','Joint Atomic Energy','Internal Security','Committees','Outer Continental Shelf','Energy (Ad Hoc)','Joint Deficit Reduction','Finance','Judiciary','Energy and Natural Resources','Health, Education, Labor, and Pensions','Commerce, Science, and Transportation','Homeland Security and Governmental Affairs','Environment and Public Works','Foreign Relations','Banking, Housing, and Urban Affairs','Agriculture, Nutrition, and Forestry','Rules and Administration','Armed Services','Indian Affairs','Budget','Appropriations','Small Business and Entrepreneurship','Post Office and Civil Service','Intelligence','District of Columbia','Aeronautical','Aging','Ethics','Senate Narcotics Caucus','Joint Deficit Reduction','Impeachment','Official Conduct','POW/MIA Affairs','Whitewater','Joint Economic','Joint Library','Joint Printing','Joint Taxation','Democratic Whip','Majority Whip','Assistant Democratic Leader','Majority Leader','Democratic Leader','The Speaker','International Relations','Government Reform','Resources','Science','Governmental Affairs','Permanent Select Committee on Intelligence']
         self.policyAreas = ['Agriculture and Food','Animals','Armed Forces and National Security','Arts, Culture, Religion','Civil Rights and Liberties, Minority Issues',
                             'Commerce','Congress','Crime and Law Enforcement','Economics and Public Finance','Education','Emergency Management','Energy','Environmental Protection',
                             'Families','Finance and Financial Sector','Foreign Trade and International Finance','Government Operations and Politics',
@@ -258,6 +248,7 @@ class DBManager:
             self.cnx.commit()
     
     def createAll(self):
+        print "Creating Tables"
         self.createCombo()
         self.createAction()
         self.createBill()
@@ -270,9 +261,12 @@ class DBManager:
         self.createComboBill()
         self.createBillPolicy()
         self.createPolicyAreas()
+        print "All Tables Created"
     
     def recreateAll(self):
+        print "Dropping all tables"
         self.drop('all')
+        print "Tables Dropped"
         self.createAll()
 
     def close(self):
@@ -281,9 +275,9 @@ class DBManager:
 
 
 
-test = DBManager()
-test.recreateAll()
-test.close()
+#test = DBManager()
+#test.recreateAll()
+#test.close()
 #test.createComm()
 #test.populateCommittee()
 #test.show('committee')

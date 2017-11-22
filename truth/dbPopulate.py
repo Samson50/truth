@@ -27,7 +27,7 @@ class DBPopulate:
         except mysql.connector.errors.ProgrammingError as e:
             print fname+" "+lname+" "+str(e)
         except exceptions.IndexError as e:
-            #print "getLegID Error: "+fname+" - "+lname+" "+str(e)
+            print "getLegID Error: "+fname+" - "+lname+" "+str(e)
             return 0
         except:
             print "getLegID Error: "+fname+" - "+lname+" "+str(sys.exc_info()[0])
