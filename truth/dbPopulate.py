@@ -6,7 +6,7 @@ class DBPopulate:
     def __init__(self):
         self.cnx = mysql.connector.connect(user='bob', password='bobwhite', host='localhost', database='federal')
         self.cursor = self.cnx.cursor()
-        
+
     def getFirstYear(self):
         try:
             argument = ("SELECT MIN(First) FROM LEGISLATOR; ")
@@ -18,7 +18,7 @@ class DBPopulate:
             print e
         except:
             print sys.exc_info()[0]
-        
+
     def getLegID(self, fname, lname):
         try:
             argument = ("SELECT LegID FROM Legislator WHERE FirstName=\""+fname+"\" AND LastName LIKE \""+lname+"\";")
@@ -31,7 +31,7 @@ class DBPopulate:
             return 0
         except:
             print "getLegID Error: "+fname+" - "+lname+" "+str(sys.exc_info()[0])
-        
+
     def getComID(self, committee):
         try:
             argument = ("SELECT ComID FROM Committee WHERE ComName=\""+committee+"\";")
@@ -44,7 +44,7 @@ class DBPopulate:
             return 0
         except:
             print "idk "+str(sys.exc_info()[0])
-            
+
     def getBillID(self, billName, con):
         try:
             argument = ("SELECT BillID FROM Bill WHERE Name=\""+billName+"\" AND Congress="+str(con)+";")
@@ -56,7 +56,7 @@ class DBPopulate:
             print e
         except:
             print "idk "+str(sys.exc_info()[0])
-            
+
     def getPolicyID(self, pname):
         try:
             argument = ("SELECT PolID FROM PolicyArea where PAName=\""+pname+"\";")
@@ -68,11 +68,11 @@ class DBPopulate:
             print e
         except:
             print "idk "+str(sys.exc_info()[0])
-            
+
     def getLegIDVar(self, fname, lname, state, SoH):
         if fname!= '':
             if state != '':
-                try: 
+                try:
                     argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND LastName LIKE \""+lname+"\" AND State = \""+state+"\" AND Job=\""+SoH+"\";")
                     self.cursor.execute(argument)
                     return self.cursor.fetchall()[0][0]
@@ -82,7 +82,7 @@ class DBPopulate:
                     print "getLegIDVar Error: "+fname+" - "+lname+" :"+state+" "+str(e)
                 except:
                     print "getLegIDVar Error: "+fname+" - "+lname+" :"+state+" "+str(sys.exc_info()[0])
-    
+
             else:
                 try:
                     argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND LastName LIKE \""+lname+"\" AND Job=\""+SoH+"\";")
@@ -95,7 +95,7 @@ class DBPopulate:
                 except:
                     print "getLegIDVar Error: "+fname+" - "+lname+" :"+str(sys.exc_info()[0])
         elif state != '':
-            try: 
+            try:
                 argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND State = \""+state+"\" AND Job=\""+SoH+"\";")
                 self.cursor.execute(argument)
                 return self.cursor.fetchall()[0][0]
@@ -105,9 +105,9 @@ class DBPopulate:
                 print "getLegIDVar Error: "+fname+" :"+state+" "+str(e)
             except:
                 print "getLegIDVar Error: "+fname+" :"+state+" "+str(sys.exc_info()[0])
-    
-        else: 
-            try: 
+
+        else:
+            try:
                 argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND Job=\""+SoH+"\";")
                 self.cursor.execute(argument)
                 return self.cursor.fetchall()[0][0]
@@ -118,7 +118,7 @@ class DBPopulate:
             except:
                 print "getLegIDVar Error: "+fname+" :"+str(sys.exc_info()[0])
 
-        
+
 
     def insertLeg(self, fname, lname, party, state, SoH, year):
         try:
@@ -132,7 +132,7 @@ class DBPopulate:
             print "insertLeg Error: "+fname+" "+lname+" "+str(e)
         except:
             print "insertLeg Error: "+str(sys.exc_info()[0])
-            
+
     def insertCombo(self, fname, lname, commName):
         LegID = self.getLegID(fname,lname)
         ComID = self.getComID(commName)
@@ -147,7 +147,7 @@ class DBPopulate:
             print fname+" "+lname+" Com: "+commName+" "+str(e)
         except:
             print "idk "+str(sys.exc_info()[0])
-            
+
     def insertBill(self, name, con, fname, lname, summary):
         spon = self.getLegID(fname,lname)
         #print spon
@@ -161,7 +161,7 @@ class DBPopulate:
             print "insertBill Error: "+fname+" - "+lname+" "+str(e)
         except:
             print "insertBill Error: "+str(sys.exc_info()[0])
-            
+
     def insertCosponsor(self, fname, lname, BillID):
         LegID = self.getLegID(fname,lname)
         if LegID == 0: return
@@ -174,7 +174,7 @@ class DBPopulate:
             print "insertCosponsor Error: "+fname+" - "+lname+" bnum: "+str(BillID)+" "+str(e)
         except:
             print "insertCosponsor Error: "+str(sys.exc_info()[0])
-            
+
     def insertAction(self, BillID, date, action, actBy):
         if len(action) > 255: action = action[0:255]
         if '-' in date: date = date.split('-')[0]
@@ -188,13 +188,13 @@ class DBPopulate:
             print "Action error for Bill: "+str(BillID)+" "+str(e)
         except:
             print "Action error: "+str(sys.exc_info()[0])
-            
+
     def insertComboBill(self, BillID, commName):
         ComID = self.getComID(commName)
         if ComID == 0: return
         try:
-            argument =   ("INSERT INTO Combo "
-                                "(LegID, ComID)"
+            argument =   ("INSERT INTO ComboBill "
+                                "(BillID, ComID)"
                                 "VALUES ("+str(BillID)+", "+str(ComID)+");"
                         )
             self.cursor.execute(argument)
@@ -203,7 +203,7 @@ class DBPopulate:
             print "insertComboBill Error: "+str(BillID)+" Com: "+commName+" "+str(e)
         except:
             print "insertComboBill Error: "+str(sys.exc_info()[0])
-            
+
     def insertRelatedBill(self, BillID, RBName, con):
         try:
             argument =   ("INSERT INTO RelatedBill "
@@ -216,7 +216,7 @@ class DBPopulate:
             print "insertRelatedBill Error: "+str(BillID)+" Related Bill: "+str(RBName)+" "+str(e)
         except:
             print "insertRelatedBill Error: "+str(sys.exc_info()[0])
-            
+
     def insertBillPolicy(self, billID, policy):
         policyID = self.getPolicyID(policy)
         try:
@@ -230,13 +230,13 @@ class DBPopulate:
             print "insertBillPolicy Error: "+str(billID)+" Policy: "+str(policy)+" "+str(e)
         except:
             print "insertBillPolicy Error: "+str(sys.exc_info()[0])
-            
+
     def insertRoll(self, voteID, question, issue):
         year = voteID/1000000
         con = year-1901 - (year%2)
         billID = self.getBillID(issue, con)
         if len(question) >= 255: question = question[:255]
-        try: 
+        try:
             argument = ("INSERT INTO Roll"
                         "(VoteNum, Question, Issue)"
                         "VALUES ("+str(voteID)+", \""+question+"\", "+str(billID)+");")
@@ -248,10 +248,10 @@ class DBPopulate:
             print "insertRoll Error: "+str(e)
         except:
             print "insertRoll Error: "+str(sys.exc_info()[0])
-            
+
     def insertVote(self, voteID, choice, fname, lname, state, SoH):
         legID = self.getLegIDVar(fname, lname, state, SoH)
-        try: 
+        try:
             argument = ("INSERT INTO Vote (VoteID, Choice, LegID)"
                          "VALUES ("+str(voteID)+", \""+choice+"\", "+str(legID)+");")
             self.cursor.execute(argument)
@@ -263,7 +263,7 @@ class DBPopulate:
         except:
             print "insertVote Error: "+str(sys.exc_info()[0])
 
-            
+
     def deleteItem(self, table, cond, itemNo):
         try:
             argument = ("DELETE FROM "+table+" WHERE "+cond+"="+str(itemNo))
@@ -273,12 +273,12 @@ class DBPopulate:
             print e
         except:
             print "idk "+str(sys.exc_info()[0])
-            
+
     def showTable(self, item):
         self.cursor.execute("select * from %s"%(item))
         for item in self.cursor.fetchall():
             print item
-            
+
     def close(self):
         self.cursor.close()
         self.cnx.close()

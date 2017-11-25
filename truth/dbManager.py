@@ -30,8 +30,8 @@ class DBManager:
         except mysql.connector.errors.ProgrammingError as e:
             print e
         except:
-            print "idk"+str(sys.exc_info()[0])
-    
+            print "idk "+str(sys.exc_info()[0])
+
     def createVote(self):
         try:
             vote_table =   ("CREATE TABLE Vote ("
@@ -47,7 +47,7 @@ class DBManager:
             print e
         except:
             print "idk"+str(sys.exc_info()[0])
-    
+
     def createRoll(self):
         try:
             roll_table =   ("CREATE TABLE Roll ("
@@ -62,8 +62,8 @@ class DBManager:
         except mysql.connector.errors.ProgrammingError as e:
             print e
         except:
-            print "idk"+str(sys.exc_info()[0])
-    
+            print "idk "+str(sys.exc_info()[0])
+
     def createBill(self):
         try:
             arguments =   ("CREATE TABLE Bill ("
@@ -81,8 +81,8 @@ class DBManager:
         except mysql.connector.errors.ProgrammingError as e:
             print e
         except:
-            print "idk"+str(sys.exc_info()[0])
-            
+            print "idk "+str(sys.exc_info()[0])
+
     def insertCommittee(self, name):
         try:
             argument = "INSERT INTO Committee (ComName) VALUES (\""+name+"\");"
@@ -91,12 +91,12 @@ class DBManager:
         except mysql.connector.errors.ProgrammingError as e:
             print e
         except:
-            print "idk"+str(sys.exc_info()[0])
-            
+            print "idk "+str(sys.exc_info()[0])
+
     def populateCommittee(self):
         for name in self.committees:
             self.insertCommittee(name)
-            
+
     def createComm(self):
         try:
             arguments =   ("CREATE TABLE Committee ("
@@ -111,7 +111,7 @@ class DBManager:
         except:
             print "idk"+str(sys.exc_info()[0])
         self.populateCommittee()
-        
+
     def insertPolicyArea(self, name):
         try:
             argument = "INSERT INTO PolicyArea (PAName) VALUES (\""+name+"\");"
@@ -121,11 +121,11 @@ class DBManager:
             print e
         except:
             print "idk"+str(sys.exc_info()[0])
-            
+
     def populatePolicyArea(self):
         for name in self.policyAreas:
             self.insertPolicyArea(name)
-            
+
     def createPolicyAreas(self):
         try:
             arguments =   ("CREATE TABLE PolicyArea ("
@@ -140,7 +140,7 @@ class DBManager:
             print e
         except:
             print "idk"+str(sys.exc_info()[0])
-        
+
     def createBillPolicy(self):
         try:
             arguments = ("CREATE TABLE BillPolicy ("
@@ -154,7 +154,7 @@ class DBManager:
             print e
         except:
             print "idk"+str(sys.exc_info()[0])
-    
+
     def createCosponsor(self):
         try:
             arguments =   ("CREATE TABLE Cosponsor ("
@@ -169,7 +169,7 @@ class DBManager:
             print e
         except:
             print "idk"+str(sys.exc_info()[0])
-    
+
     def createAction(self):
         try:
             arguments =   ("CREATE TABLE Action ("
@@ -186,7 +186,7 @@ class DBManager:
             print e
         except:
             print "idk"+str(sys.exc_info()[0])
-            
+
     def createCombo(self):
         try:
             arguments =   ("CREATE TABLE Combo ("
@@ -201,7 +201,7 @@ class DBManager:
             print e
         except:
             print "idk"+str(sys.exc_info()[0])
-            
+
     def createComboBill(self):
         try:
             arguments =   ("CREATE TABLE ComboBill ("
@@ -216,7 +216,7 @@ class DBManager:
             print e
         except:
             print "idk"+str(sys.exc_info()[0])
-            
+
     def createRelatedBill(self):
         try:
             arguments =   ("CREATE TABLE RelatedBill ("
@@ -231,12 +231,12 @@ class DBManager:
             print e
         except:
             print "idk"+str(sys.exc_info()[0])
-            
+
     def show(self, item):
         self.cursor.execute("select * from %s"%(item))
         for item in self.cursor.fetchall():
             print item
-        
+
     def drop(self, table):
         if table == 'all':
             self.cursor.execute("show tables")
@@ -246,7 +246,7 @@ class DBManager:
         else:
             self.cursor.execute("drop table %s"%(table))
             self.cnx.commit()
-    
+
     def createAll(self):
         print "Creating Tables"
         self.createCombo()
@@ -262,7 +262,7 @@ class DBManager:
         self.createBillPolicy()
         self.createPolicyAreas()
         print "All Tables Created"
-    
+
     def recreateAll(self):
         print "Dropping all tables"
         self.drop('all')
