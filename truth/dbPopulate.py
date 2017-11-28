@@ -120,11 +120,11 @@ class DBPopulate:
 
 
 
-    def insertLeg(self, fname, lname, party, state, SoH, year):
+    def insertLeg(self, fname, lname, party, state, SoH, year, website):
         try:
             argument =   ("INSERT INTO Legislator "
-                                "(FirstName, LastName, Party, State, Job, First)"
-                                "VALUES (\""+fname+"\", \""+lname+"\", \""+party+"\", \""+state+"\", \""+SoH+"\", "+str(year)+");"
+                                "(FirstName, LastName, Party, State, Job, First, Website)"
+                                "VALUES (\""+fname+"\", \""+lname+"\", \""+party+"\", \""+state+"\", \""+SoH+"\", "+str(year)+", \""+website+"\");"
                         )
             self.cursor.execute(argument)
             self.cnx.commit()
@@ -132,6 +132,19 @@ class DBPopulate:
             print "insertLeg Error: "+fname+" "+lname+" "+str(e)
         except:
             print "insertLeg Error: "+str(sys.exc_info()[0])
+            
+    def addCID(self, fname, lname, cid):
+        legID = self.getLegID(fname, lname)
+        if legID == 0:
+            legID = self.getLegID("", lname)
+        try:
+            argument = ("UPDATE Legislator SET CID="+str(cid)+" WHERE LegID="+str(legID)+";")
+            self.cursor.execute(argument)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print "addCID Error: "+fname+" "+lname+" "+str(e)
+        except:
+            print "addCID Error: "+fname+" "+lname+": "+str(sys.exc_info()[0])
 
     def insertCombo(self, fname, lname, commName):
         LegID = self.getLegID(fname,lname)

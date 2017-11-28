@@ -182,7 +182,7 @@ class BillScraper:
         except UnboundLocalError as e:
             print "Bill: "+billLink+" Error: "+str(e)
         except:
-            sys.stdout.write("\rIndex Error: {1}\n".format(billLink))
+            sys.stdout.write("\rIndex Error: {0}\n\r".format(billLink))
             sys.stdout.flush()
 
     def getBillText(self, billNum, congNum, billType):
@@ -222,7 +222,7 @@ class BillScraper:
             self.currentBill += 1
             totTime += end-start
             avgTime = totTime/(self.currentBill*1.0)
-            sys.stdout.write("\rProgress: [{0}{1}] {2}: {3:4.2f}>".format("="*(50*(self.currentBill/self.maxBill)), " "*(50*(1 - self.currentBill/self.maxBill)), str(self.currentBill), avgTime))
+            sys.stdout.write("\rProgress: [{0}{1}] {2}: {3:4.2f}>".format("="*(100*(self.currentBill/self.maxBill)), " "*(100*(1 - self.currentBill/self.maxBill)), str(self.currentBill), avgTime))
             sys.stdout.flush()
             
     def getBillsForCongressByType(self, congNum, numBills, t):

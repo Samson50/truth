@@ -1,8 +1,12 @@
 import os
 import sys
-#import time
+import time
 from dbPopulate import DBPopulate
 
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium import webdriver
 
@@ -23,20 +27,52 @@ class CongressScraper:
                           'WISCONSIN':'WI','WYOMING':'WY','NORTHERN MARIANA ISLANDS':'MP','GUAM':'GU','PUERTO RICO':'PR',
                           'VIRGIN ISLANDS':'VI','AMERICAN SAMOA':'AS','DISTRICT OF COLUMBIA':'DC','PALAU':'PW',
                           'FEDERATED STATES OF MICRONESIA':'FM','MARSHALL ISLANDS':'MH'}
-        print "CongressScraper Initializing"
-        os.environ['MOZ_HEADLESS'] = '1'
+        print "WebDriver Initializing"
         print "os.environ['MOZ_HEADLESS'] = '1'"
+        print "binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)\n"
+        self.initDriver()
+        
+    def initDriver(self):
+        os.environ['MOZ_HEADLESS'] = '1'
         binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
-        print "binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)"
         self.driver = webdriver.Firefox(firefox_binary=binary)
+        self.driver.implicitly_wait(5)
+        
+    def restartDriver(self):
+        self.driver.quit()
+        self.initDriver()
 
     def fetch(self, string):
         #print "Retrieving: "+string
         self.driver.get(string)
+        
+    def quickFetch(self, string):
+        self.restartDriver()
+        self.driver.get(string)
 
     def findElements(self, code, search):
-        #print "Finding element: "+search
-        return self.driver.find_elements(code, search)
+        try:
+            element_presence = EC.presence_of_element_located((By.XPATH, search))
+            WebDriverWait(self.driver, 5).until(element_presence)
+            return self.driver.find_elements(code, search)
+        except TimeoutException:
+            print 'Loading took too much time!'
+    
+    def addCID(self):
+        self.fetch("https://www.opensecrets.org/members-of-congress/members-list?cong_no=115&cycle=2018")
+        for p in range(0,11):
+            persons = self.findElements('xpath', '//table[@id="DataTables_Table_0"]/tbody/tr/td/a')
+            for person in persons:
+                cid = int(person.get_attribute('href').split('=')[1][1:].split('&')[0])
+                name = person.text.strip()
+                name = name.split(', ')[1]+" "+name.split(', ')[0]
+                fname = name.split()[0]
+                lname = ' '.join(name.split()[1:])
+                if len(lname.split()) > 1 and len(lname.split()[0]) == 1:
+                    lname = lname.split()[0]+". "+' '.join(lname.split()[1:])
+                self.populator.addCID(fname, lname, cid)
+            button = self.findElements('xpath', '//div[@id="DataTables_Table_0_paginate"]/a[2]')[0]
+            button.click()
     
     def addCommittee(self):
         self.fetch('http://clerk.house.gov/committee_info/oal.aspx')
@@ -51,8 +87,9 @@ class CongressScraper:
                 self.congr[name]['committees'] = comms
 
 
-    def addCongress(self, name, items):
+    def addCongress(self, name, link, items):
         vals = {}
+        vals['link'] = link
         reference = self.important_index
         for x in range(0,4):
             item = items[min(reference+x,len(items)-1)].text
@@ -81,12 +118,13 @@ class CongressScraper:
     def scrapePage(self, target):
         self.fetch(target)
         names = self.findElements("xpath", '//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/span/a')
+        links = [link.get_attribute('href') for link in names]
         names = [name.text for name in names]
         names = [name.split(', ')[1]+' '+ ' '.join(name.split(', ')[0].split()[1:]) for name in names]
         self.names.extend(names)
         data = self.findElements("xpath", '//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/div/div/span')
         for x in range(0, len(names)):
-            self.addCongress(names[x], data)
+            self.addCongress(names[x], links[x], data)
         self.important_index = 0
         
     def getCongress(self):
@@ -103,9 +141,12 @@ class CongressScraper:
             lname = ' '.join(name.split()[1:])
             if '"' in lname:
                 lname = ''.join(lname.split('"'))
-            #print fname+" - "+lname
             datum = self.congr[name]
             #"(FirstName, LastName, Party, State, Job)"
+            self.quickFetch(datum['link'])
+            #print fname+" "+lname
+            link = self.findElements('xpath', '//div[@id="content"]/div/div/div/div/table[2]/tbody/tr[1]/td/a')[0].text
+            #print link
             SoH = ''
             year = 0
             if 's' in datum.keys():
@@ -124,7 +165,8 @@ class CongressScraper:
                     year = datum['h']
             party = datum['party']
             state = self.stateDict[datum['state'].upper()]
-            self.populator.insertLeg(fname,lname,party,state,SoH,year)
+            link = datum['link']
+            self.populator.insertLeg(fname,lname,party,state,SoH,year,link)
             if 'committees' in datum.keys():
                 for comm in datum['committees']:
                     if ', Chair' in comm:
@@ -132,21 +174,22 @@ class CongressScraper:
                     if 'House ' in comm:
                         comm = ' '.join(comm.split()[1:])
                     self.populator.insertCombo(fname,lname,comm)
+        self.addCID()
         print "Legilator table populated"
 
     def runTest(self):
-        self.populateDB()
+        self.addCID()
 
     def close(self):
         self.populator.close()
         self.driver.quit()
 
-#test = CongressScraper()
-#run = time.time()
-#test.runTest()
-#end = time.time()
-#print "Test completed in %0.3f seconds." % ((end-run))
-#test.close()
+test = CongressScraper()
+run = time.time()
+test.populateDB()
+end = time.time()
+print "Test completed in %0.3f seconds." % ((end-run))
+test.close()
 
 #print "Exiting"
 #print "Closed"
