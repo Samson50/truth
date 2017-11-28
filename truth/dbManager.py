@@ -22,10 +22,44 @@ class DBManager:
                                 "Party char(1),"
                                 "State char(2),"
                                 "Job char(1),"
-                                "First int"
+                                "First int,"
+                                "Website char(255),"
+                                "cid int"
                                 ");"
                             )
             self.cursor.execute(legis_table)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print e
+        except:
+            print "idk "+str(sys.exc_info()[0])
+            
+    def createMoney(self):
+        try:
+            money_table =   ("CREATE TABLE Money ("
+                                "MonID int auto_increment primary key,"
+                                "LegID int,"
+                                "ContID int,"
+                                "Cycle int,"
+                                "Amount int"
+                                ");"
+                            )
+            self.cursor.execute(money_table)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print e
+        except:
+            print "idk "+str(sys.exc_info()[0])
+            
+    def createContributor(self):
+        try:
+            money_table =   ("CREATE TABLE Contributor ("
+                                "ContID int auto_increment primary key,"
+                                "Name char(100),"
+                                "Type binary(1)"
+                                ");"
+                            )
+            self.cursor.execute(money_table)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
             print e
@@ -261,6 +295,8 @@ class DBManager:
         self.createComboBill()
         self.createBillPolicy()
         self.createPolicyAreas()
+        self.createMoney()
+        self.createContributor()
         print "All Tables Created"
 
     def recreateAll(self):
