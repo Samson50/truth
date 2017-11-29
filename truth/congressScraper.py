@@ -13,7 +13,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium import webdriver
-
+#107.134.155.108
 class CongressScraper:
     def __init__(self):
         self.populator = DBPopulate()
