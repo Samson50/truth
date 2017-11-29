@@ -2,7 +2,11 @@ import os
 import sys
 import time
 from dbPopulate import DBPopulate
+import requests
 
+from lxml import html
+from lxml import etree
+from fake_useragent import UserAgent
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
@@ -13,6 +17,7 @@ from selenium import webdriver
 class CongressScraper:
     def __init__(self):
         self.populator = DBPopulate()
+        self.ua = UserAgent()
         self.important_index = 0
         self.names = []
         self.congr = {}
@@ -41,6 +46,15 @@ class CongressScraper:
     def restartDriver(self):
         self.driver.quit()
         self.initDriver()
+        
+    def get(self, string):
+        header = {"User-Agent": self.ua.random}
+        page = requests.get(string, header)
+        self.tree = html.fromstring(page.content)
+
+    def find(self, string):
+        return self.tree.xpath(string)
+
 
     def fetch(self, string):
         #print "Retrieving: "+string
@@ -63,7 +77,7 @@ class CongressScraper:
         for p in range(0,11):
             persons = self.findElements('xpath', '//table[@id="DataTables_Table_0"]/tbody/tr/td/a')
             for person in persons:
-                cid = int(person.get_attribute('href').split('=')[1][1:].split('&')[0])
+                cid = int(person.attrib['href'].split('=')[1][1:].split('&')[0])
                 name = person.text.strip()
                 name = name.split(', ')[1]+" "+name.split(', ')[0]
                 fname = name.split()[0]
@@ -71,12 +85,12 @@ class CongressScraper:
                 if len(lname.split()) > 1 and len(lname.split()[0]) == 1:
                     lname = lname.split()[0]+". "+' '.join(lname.split()[1:])
                 self.populator.addCID(fname, lname, cid)
-            button = self.findElements('xpath', '//div[@id="DataTables_Table_0_paginate"]/a[2]')[0]
-            button.click()
-    
+                button = self.findElements('xpath', '//div[@id="DataTables_Table_0_paginate"]/a[2]')[0]
+                button.click()
+
     def addCommittee(self):
-        self.fetch('http://clerk.house.gov/committee_info/oal.aspx')
-        committees = self.findElements('xpath', '//div/table/tbody/tr/td')#[0].text.split('\n')
+        self.get('http://clerk.house.gov/committee_info/oal.aspx')
+        committees = self.find('//div/table/tbody/tr/td')#[0].text.split('\n')
         for c in range(0, len(committees)/2):
             names = committees[c*2].text.split(', ')
             fname = names[1]
@@ -85,8 +99,8 @@ class CongressScraper:
             name = fname + ' ' + lname
             if name in self.congr.keys() and '' not in comms:
                 self.congr[name]['committees'] = comms
-
-
+    
+    
     def addCongress(self, name, link, items):
         vals = {}
         vals['link'] = link
@@ -113,26 +127,28 @@ class CongressScraper:
                         vals['s'] = int(ter[0])
                     elif 'House' in ser:
                         vals['h'] = int(ter[0])
-        self.congr[name] = vals                                              
-
+            self.congr[name] = vals  
+    
     def scrapePage(self, target):
-        self.fetch(target)
-        names = self.findElements("xpath", '//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/span/a')
-        links = [link.get_attribute('href') for link in names]
+        self.get(target)
+        names = self.find('//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/span/a')
+        print(etree.tostring(self.tree, pretty_print=True))
+        links = [link.attrib['href'] for link in names]
         names = [name.text for name in names]
         names = [name.split(', ')[1]+' '+ ' '.join(name.split(', ')[0].split()[1:]) for name in names]
         self.names.extend(names)
-        data = self.findElements("xpath", '//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/div/div/span')
+        data = self.find('//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/div/div/span')
         for x in range(0, len(names)):
-            self.addCongress(names[x], links[x], data)
-        self.important_index = 0
-        
+            print names[x]+" "+links[x]
+            #self.addCongress(names[x], links[x], data)
+            #self.important_index = 0
+    
     def getCongress(self):
         self.scrapePage("https://www.congress.gov/members?q=%7B%22congress%22%3A%22115%22%7D&pageSize=250&page=1")
-        self.scrapePage("https://www.congress.gov/members?q=%7B%22congress%22%3A%22115%22%7D&pageSize=250&page=2")
-        self.scrapePage("https://www.congress.gov/members?q=%7B%22congress%22%3A%22115%22%7D&pageSize=250&page=3")
-        self.addCommittee()
-        
+        #self.scrapePage("https://www.congress.gov/members?q=%7B%22congress%22%3A%22115%22%7D&pageSize=250&page=2")
+        #self.scrapePage("https://www.congress.gov/members?q=%7B%22congress%22%3A%22115%22%7D&pageSize=250&page=3")
+        #self.addCommittee()
+    
     def populateDB(self):
         print "Populating Legislator table"
         self.getCongress()
@@ -143,9 +159,9 @@ class CongressScraper:
                 lname = ''.join(lname.split('"'))
             datum = self.congr[name]
             #"(FirstName, LastName, Party, State, Job)"
-            self.quickFetch(datum['link'])
+            self.get(datum['link'])
             #print fname+" "+lname
-            link = self.findElements('xpath', '//div[@id="content"]/div/div/div/div/table[2]/tbody/tr[1]/td/a')[0].text
+            link = self.find( '//div[@id="content"]/div/div/div/div/table[2]/tbody/tr[1]/td/a')[0].text
             #print link
             SoH = ''
             year = 0
@@ -153,13 +169,12 @@ class CongressScraper:
                 SoH = "S"
                 year = datum['s']
             if 'h' in datum.keys():
-                if SoH != '' and datum['h'] > datum['s']:#fix this logic
+                if SoH != '' and datum['h'] > datum['s']:
                     SoH = "H"
                     year = datum['h']
                 elif SoH == '': 
                     SoH = "H"
                     year = datum['h']
-                    
                 else: 
                     SoH = "S"
                     year = datum['h']
@@ -176,9 +191,9 @@ class CongressScraper:
                     self.populator.insertCombo(fname,lname,comm)
         self.addCID()
         print "Legilator table populated"
-
+    
     def runTest(self):
-        self.addCID()
+        self.getCongress()
 
     def close(self):
         self.populator.close()
@@ -186,7 +201,7 @@ class CongressScraper:
 
 test = CongressScraper()
 run = time.time()
-test.populateDB()
+test.runTest()
 end = time.time()
 print "Test completed in %0.3f seconds." % ((end-run))
 test.close()
