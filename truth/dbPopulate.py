@@ -21,7 +21,7 @@ class DBPopulate:
 
     def getLegID(self, fname, lname):
         try:
-            argument = ("SELECT LegID FROM Legislator WHERE FirstName=\""+fname+"\" AND LastName LIKE \""+lname+"\";")
+            argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND LastName LIKE \""+lname+"\";")
             self.cursor.execute(argument)
             return self.cursor.fetchall()[0][0]
         except mysql.connector.errors.ProgrammingError as e:
@@ -31,6 +31,45 @@ class DBPopulate:
             return 0
         except:
             print "getLegID Error: "+fname+" - "+lname+" "+str(sys.exc_info()[0])
+            
+    def getLegIDCID(self, fname, lname, state, party):
+        try:
+            argument = ("SELECT LegID FROM Legislator WHERE "
+                        "FirstName LIKE \""+fname+"\" AND "
+                        "LastName LIKE \""+lname+"\" AND "
+                        "State LIKE \""+state+"\" AND "
+                        "Party LIKE \""+party+"\""
+                        ";")
+            self.cursor.execute(argument)
+            return self.cursor.fetchall()[0][0]
+        except mysql.connector.errors.ProgrammingError as e:
+            print fname+" "+lname+" "+str(e)
+        except exceptions.IndexError as e:
+            #print "getLegIDCID Error: "+fname+" - "+lname+" "+str(e)
+            return 0
+        except:
+            print "getLegIDCID Error: "+fname+" - "+lname+" "+str(sys.exc_info()[0])
+            
+    def getContID(self, cname, t):
+        try:
+            argument = ("SELECT ContID FROM Contributor WHERE Name=\""+cname+"\";")
+            self.cursor.execute(argument)
+            return self.cursor.fetchall()[0][0]
+        except mysql.connector.errors.ProgrammingError as e:
+            print cname+" "+str(e)
+        except exceptions.IndexError as e:
+            try:
+                arg = ("INSERT INTO Contributor (Name, Type) VALUES (\""+cname+"\", "+str(t)+";")
+                self.cursor.execute(arg)
+                self.cnx.commit()
+                arg = ("SELECT ContID FROM Contributor WHERE Name=\""+cname+"\";")
+                self.cursor.execute(argument)
+                return self.cursor.fetchall()[0][0]
+            except:
+                print "Good Luck - Error: "+cname+" "+str(sys.exc_info()[0])
+        except:
+            print "getContID Error: "+cname+" "+str(sys.exc_info()[0])
+
 
     def getComID(self, committee):
         try:
@@ -133,10 +172,14 @@ class DBPopulate:
         except:
             print "insertLeg Error: "+str(sys.exc_info()[0])
             
-    def addCID(self, fname, lname, cid):
-        legID = self.getLegID(fname, lname)
+    def addCID(self, fname, lname, cid, state, party):
+        if len(fname) == 1: fname = fname+'.'
+        legID = self.getLegIDCID(fname, '%'+lname, state, party)
         if legID == 0:
-            legID = self.getLegID("", lname)
+            legID = self.getLegIDCID(fname, '%'+lname.split()[-1], state, party)
+            if legID == 0: 
+                legID = self.getLegIDCID("%", '%'+lname, state, party)
+                if legID == 0: legID = self.getLegIDCID("%", '%'+lname.split()[-1], state, party)
         try:
             argument = ("UPDATE Legislator SET CID="+str(cid)+" WHERE LegID="+str(legID)+";")
             self.cursor.execute(argument)
@@ -145,6 +188,24 @@ class DBPopulate:
             print "addCID Error: "+fname+" "+lname+" "+str(e)
         except:
             print "addCID Error: "+fname+" "+lname+": "+str(sys.exc_info()[0])
+            
+    def addContribution(self, fname, lname, cname, amount, nature, IoC):
+        legID = self.getLegID(fname, lname)
+        if legID == 0:
+            legID = self.getLegID("%", lname)
+        contID = self.getContID(cname, IoC)
+        try:
+            argument =   ("INSERT INTO Money"
+                                "(LegID, ContID, Amount, Nature)"
+                                "VALUES ("+legID+", "+contID+", "+amount+", "+nature+");"
+                        )
+            self.cursor.execute(argument)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print "addCont Error: "+fname+" "+lname+": "+cname+" "+str(e)
+        except:
+            print "addCont Error: "+str(sys.exc_info()[0])
+
 
     def insertCombo(self, fname, lname, commName):
         LegID = self.getLegID(fname,lname)

@@ -5,7 +5,6 @@ from dbPopulate import DBPopulate
 import requests
 
 from lxml import html
-from lxml import etree
 from fake_useragent import UserAgent
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
@@ -21,6 +20,7 @@ class CongressScraper:
         self.important_index = 0
         self.names = []
         self.congr = {}
+        self.testing = True
         self.stateDict = {'ALABAMA':'AL','ALASKA':'AK','ARIZONA':'AZ','ARKANSAS':'AR','CALIFORNIA':'CA','COLORADO':'CO',
                           'CONNECTICUT':'CT','DELAWARE':'DE','FLORIDA':'FL','GEORGIA':'GA','HAWAII':'HI','IDAHO':'ID',
                           'ILLINOIS':'IL','INDIANA':'IN','IOWA':'IA','KANSAS':'KS','KENTUCKY':'KY','LOUISIANA':'LA','MAINE':'ME',
@@ -48,6 +48,7 @@ class CongressScraper:
         self.initDriver()
         
     def get(self, string):
+        if self.testing: print "Getting: "+string
         header = {"User-Agent": self.ua.random}
         page = requests.get(string, header)
         self.tree = html.fromstring(page.content)
@@ -56,10 +57,16 @@ class CongressScraper:
         #request.get("str", timeout=10)
 
     def find(self, string):
-        return self.tree.xpath(string)
+        if not self.testing:
+            return self.tree.xpath(string)
+        else:
+            print "Finding: "+string
+            item = self.tree.xpath(string)
+            for i in item:
+                print i
 
     def fetch(self, string):
-        #print "Retrieving: "+string
+        if self.testing: print "Retrieving: "+string
         self.driver.get(string)
         
     def quickFetch(self, string):
@@ -67,6 +74,7 @@ class CongressScraper:
         self.driver.get(string)
 
     def findElements(self, code, search):
+        if self.testing: print "Finding "+search
         try:
             element_presence = EC.presence_of_element_located((By.XPATH, search))
             WebDriverWait(self.driver, 5).until(element_presence)
@@ -78,15 +86,19 @@ class CongressScraper:
         self.fetch("https://www.opensecrets.org/members-of-congress/members-list?cong_no=115&cycle=2018")
         for p in range(0,11):
             persons = self.findElements('xpath', '//table[@id="DataTables_Table_0"]/tbody/tr/td/a')
-            for person in persons:
-                cid = int(person.get_attribute('href').split('=')[1][1:].split('&')[0])
-                name = person.text.strip()
+            states = self.findElements('xpath', '//table[@id="DataTables_Table_0"]/tbody/tr/td[2]')
+            parties = self.findElements('xpath', '//table[@id="DataTables_Table_0"]/tbody/tr/td[3]')
+            for p in range(len(persons)):
+                cid = int(persons[p].get_attribute('href').split('=')[1][1:].split('&')[0])
+                name = persons[p].text.strip()
                 name = name.split(', ')[1]+" "+name.split(', ')[0]
                 fname = name.split()[0]
                 lname = ' '.join(name.split()[1:])
                 if len(lname.split()) > 1 and len(lname.split()[0]) == 1:
                     lname = lname.split()[0]+". "+' '.join(lname.split()[1:])
-                self.populator.addCID(fname, lname, cid)
+                state = self.stateDict[states[p].text.strip().upper()]
+                party = parties[p].text.strip()
+                self.populator.addCID(fname, lname, cid, state, party)
             button = self.findElements('xpath', '//div[@id="DataTables_Table_0_paginate"]/a[2]')[0]
             button.click()
     
@@ -159,9 +171,9 @@ class CongressScraper:
                 lname = ''.join(lname.split('"'))
             datum = self.congr[name]
             #"(FirstName, LastName, Party, State, Job)"
-            self.quickFetch(datum['link'])
+            link = datum['link']
             #print fname+" "+lname
-            link = self.findElements('xpath', '//div[@id="content"]/div/div/div/div/table[2]/tbody/tr[1]/td/a')[0].text
+            #link = self.find('//div[@id="content"]/div/div/div/div/table/tbody/tr/td/a')[0].text
             #print link
             SoH = ''
             year = 0
@@ -200,12 +212,12 @@ class CongressScraper:
         self.populator.close()
         self.driver.quit()
 
-test = CongressScraper()
-run = time.time()
-test.populateDB()
-end = time.time()
-print "Test completed in %0.3f seconds." % ((end-run))
-test.close()
+#test = CongressScraper()
+#run = time.time()
+#test.populateDB()
+#end = time.time()
+#print "Test completed in %0.3f seconds." % ((end-run))
+#test.close()
 
 #print "Exiting"
 #print "Closed"

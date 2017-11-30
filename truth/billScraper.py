@@ -1,7 +1,11 @@
 import os
 import sys
 import time
+import requests
+import csv
 
+from random import randint 
+from lxml import html
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -23,7 +27,7 @@ class BillScraper:
         self.firstCongress = firstCon
         self.populator = DBPopulate()
         self.initDriver()
-        self.congrVals = self.createBillsDict()
+        #self.congrVals = self.createBillsDict()
         self.maxBill = 0
         self.currentBill = 0
         
@@ -41,7 +45,8 @@ class BillScraper:
         self.initDriver()
 
     def fetch(self, string):
-        #print "Retrieving: "+string
+        time.sleep(2)
+        print "Retrieving: "+string
         try: 
             self.driver.get(string)
         except TimeoutException as e:
@@ -70,13 +75,23 @@ class BillScraper:
     def findElements(self, code, search):
         #print "Finding: "+search
         try:
-            element_presence = EC.presence_of_element_located((By.XPATH, '//*'))#.join(search.split('/')[:-1])))
+            #element_presence = EC.presence_of_element_located((By.XPATH, '//*'))#.join(search.split('/')[:-1])))
             #myElem =
-            WebDriverWait(self.driver, 3).until(element_presence)
+            #WebDriverWait(self.driver, 3).until(element_presence)
             return self.driver.find_elements(code, search)
         except TimeoutException:
             print 'Loading took too much time!'
-
+            
+    def get(self, string):
+        header = {"User-Agent": self.ua.random}
+        page = requests.get(string, header)
+        self.tree = html.fromstring(page.content)
+        time.sleep(2)
+        #requests.exceptions.Timeout
+        #request.get("str", timeout=10)
+    
+    def find(self, string):
+        return self.tree.xpath(string)
 
     def getText(self, elem):
         return ''.join(elem.get_property('textContent').strip('[]').split(','))
@@ -181,9 +196,9 @@ class BillScraper:
             self.getBillDetails(billID, conNum)
         except UnboundLocalError as e:
             print "Bill: "+billLink+" Error: "+str(e)
-        except:
-            sys.stdout.write("\rIndex Error: {0}\n\r".format(billLink))
-            sys.stdout.flush()
+        #except:
+        #    sys.stdout.write("\rIndex Error: {0}\n\r".format(billLink))
+        #    sys.stdout.flush()
 
     def getBillText(self, billNum, congNum, billType):
         if congNum % 10 == 1: congNum = str(congNum)+'st'
@@ -195,10 +210,30 @@ class BillScraper:
         text = self.findElements('xpath', '//div[@id="main"]/div[2]')[0]
         print len(text.get_attribute('innerHTML'))
         
-    def getDownTo(self, congStr, type, maxBill):
+    def getDownTo(self, t, congNum, chamber, maxBill):
+        if congNum % 10 == 1: congNum = str(congNum)+'st'
+        elif congNum % 10 == 2: congNum = str(congNum)+'nd'
+        elif congNum % 10 == 3: congNum = str(congNum)+'rd'
+        else: congNum = str(congNum)+'th'
         for bill in range(maxBill,1,-1):
-            billLink = "https://www.congress.gov/bill/"+congStr+"-congress/"+type+"/"+str(bill)+"/all-info"
-            self.getBillFromLink(billLink)
+            billLink = "https://www.congress.gov/"+t+"/"+congNum+"-congress/"+chamber+t+"/"+str(bill)
+            self.billFromLink(billLink)
+            
+    def getCongressFile(self, fcon, lcon):
+        t_index = {0:'bill',1:'amendment',2:'resolution',3:'concurrent-resolution',4:'joint-resolution'}
+        with open("conr"+str(fcon)+"-"+str(lcon)+".csv", "rb") as condat:
+            conrows = csv.reader(condat)#, delimiter=' ', quotechar='|')
+            for row in conrows:
+                tdex = 0
+                cong = int(row[0])
+                for cell in row[1:]:
+                    m = int(cell)
+                    if tdex > 4:
+                        chamber = "house-"
+                        tdex -= 5
+                    else: chamber = "senate-"
+                    t = t_index[tdex]
+                    self.getDownTo(t,cong,chamber,m)    
     
     def getFromFile(self, fileName):
         bills = open(fileName, 'r').readlines
@@ -252,12 +287,49 @@ class BillScraper:
         lastCon = max(self.congrVals.keys())
         for con in range(lastCon,93,-1):
             self.getBillsForCongress(con, self.congrVals[con])
+            
+    def getOneMax(self, congNum, chamber, t):
+        if chamber: chamber = 'House'
+        else: chamber = 'Senate'
+        search = 'https://www.congress.gov/search?q=%7B%22source%22%3A%22legislation%22%2C%22congress%22%3A%5B%22'+str(congNum)+'%22%5D%2C%22chamber%22%3A%22'+chamber+'%22%2C%22type%22%3A%22'+t+'%22%7D'
+        self.fetch(search)
+        ans = int(self.findElement('xpath','//div[@id="main"]/ol/li/span/a')[0].text.split('.')[-1])
+        return ans
+        
+    def getMaxes(self, fcon, lcon): #should only need to run fully once
+        types = [
+                ['bills','amendments','resolutions','concurrent-resolutions','joint-resolutions'],
+                ['bills','amendments','resolutions','concurrent-resolutions','joint-resolutions']
+                ]
+        t_index = {'bills':0,'amendments':1,'resolutions':2,'concurrent-resolutions':3,'joint-resolutions':4}
+        vals = {i : list(types) for i in range(lcon,fcon-1,-1)}
+        mat = [[0 for x in range(10)] for y in range(lcon-fcon+1)]
+        while len(vals.keys()) != 0 :
+            k = vals.keys()[randint(0,len(vals.keys())-1)]
+            if len(vals[k][0]) != 0 and len(vals[k][1]) != 0: c = randint(0,1)
+            elif len(vals[k][1]) == 0: c = 0
+            else: c = 1
+            try:
+                i = randint(0,len(vals[k][c])-1)
+            except:
+                i = 0
+            mat[lcon-k][t_index[vals[k][c][i]]+5*c] = self.getOneMax(k,c,vals[k][c][i])
+            w = list(vals[k][c])
+            del w[i]
+            vals[k][c] = w
+            if len(vals[k][0]) == 0 and len(vals[k][1]) == 0:
+                del vals[k]
+        with open("conr"+str(fcon)+"-"+str(lcon)+".csv", "wb") as f:
+            writer = csv.writer(f)
+            writer.writerows(mat)
+
 
     def runTest(self):
+        self.getCongressFile(115,115)
         #self.getBillsByType(115, 'bills')
         #self.scrapeForBills1(115, 1)
         #print "No Test"
-        self.getBillsForCongress(115, self.congrVals[115])
+        #self.getBillsForCongress(115, self.congrVals[115])
         #self.getAllBills()
         #self.billFromLink("https://www.congress.gov/bill/115th-congress/house-bill/4431?")
 
