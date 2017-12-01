@@ -199,18 +199,21 @@ class BillScraper:
             self.getBillDetails(billID, conNum)
         except UnboundLocalError as e:
             print "Bill: "+billLink+" Error: "+str(e)
-        #except:
-        #    sys.stdout.write("\rIndex Error: {0}\n\r".format(billLink))
-        #    sys.stdout.flush()
             
     def scrapeCongress(self, congNum, chamber, t, m):
         for page in range(1,m/250+2):
             m = m*1.0
+            t2 = 1
             search = 'https://www.congress.gov/search?pageSize=250&page='+str(page)+'&q={%22source%22:%22legislation%22,%22type%22:%22'+t+'s%22,%22congress%22:%22'+str(congNum)+'%22,%22chamber%22:%22'+chamber+'%22}'
             self.fetch(search)
-            links = [ x.get_attribute('href') for x in self.findElements('xpath', '//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a')]
-            spons = [x.text.split(' [')[0][5:] for x in self.findElements('xpath', '//div[@id="main"]/ol/li[@class="expanded"]/span[3]/a[1]')]
-            titles = [x.text for x in self.findElements('xpath','//div[@id="main"]/ol/li[@class="expanded"]/span[2]')]
+            if t == "amendment": 
+                t2 = 4
+                titles = [x.text for x in self.findElements('xpath','//div[@id="main"]/ol/li[@class="expanded"]/span[3]/a')]
+            else: 
+                t2 = 3
+                titles = [x.text for x in self.findElements('xpath','//div[@id="main"]/ol/li[@class="expanded"]/span[2]')]
+            links = [ x.attrib['href'] for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a')]
+            spons = [x.text.split(' [')[0][5:] for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span['+str(t2)+']/a[1]')]
             for x in range(len(links)):
                 start = time.time()
                 self.billFromLink(spons[x], links[x], titles[x])
@@ -218,12 +221,7 @@ class BillScraper:
                 self.currentBill += 1
                 self.totTime += end-start
                 avgTime = self.totTime/(self.currentBill*1.0)
-                #print "All Congress:  [{0}{1}]".format("="*(self.tdex), " "*(10-self.tdex))
-                #print "This Congress: [{0}{1}] {2}: {3:4.2f}>\r".format("="*(100*(self.currentBill/m)), " "*(100*(1 - self.currentBill/m)), str(self.currentBill), avgTime)
-                #sys.stdout.write(u"\u001b[2A")
-                #sys.stdout.write(" All Congress:  [{0}{1}]\n".format("="*(self.tdex), " "*(10-self.tdex)))
-                #sys.stdout.flush()
-                sys.stdout.write("\rProgress: [{0}{1}] {2}:{3} {4:4.2f}>\r".format("="*(80*(self.currentBill/m)), " "*(80*(1 - self.currentBill/m)), str(self.tdex), str(self.currentBill), avgTime))
+                sys.stdout.write("\rProgress: [{0}{1}] {2}:{3} {4:4.2f}>\r".format("="*(int(80*(self.currentBill/m))), " "*(int(80*(1 - self.currentBill/m))), str(self.tdex), str(self.currentBill), avgTime))
                 sys.stdout.flush()
             
     def getCongressFile(self, fcon, lcon):
