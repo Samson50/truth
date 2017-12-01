@@ -32,21 +32,25 @@ class BillScraper:
         self.currentBill = 0
         
     def initDriver(self):
-        print "WebDriver Initializing"
-        os.environ['MOZ_HEADLESS'] = '1'
-        print "os.environ['MOZ_HEADLESS'] = '1'"
-        binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
-        print "binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)\n"
-        self.driver = webdriver.Firefox(firefox_binary=binary)
-        self.driver.implicitly_wait(3)
+        #print "WebDriver Initializing"
+        #os.environ['MOZ_HEADLESS'] = '1'
+        #print "os.environ['MOZ_HEADLESS'] = '1'"
+        #binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
+        #print "binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)"
+        #self.driver = webdriver.Firefox(firefox_binary=binary)
+        self.driver = webdriver.PhantomJS()
+        #self.driver.implicitly_wait(3)
         
     def restartDriver(self):
         self.driver.quit()
         self.initDriver()
 
     def fetch(self, string):
-        time.sleep(2)
-        print "Retrieving: "+string
+        time.sleep(1.4)
+        self.driver.get(string)
+        self.tree = html.fromstring(self.driver.page_source)
+        #print "Retrieving: "+string
+        '''
         try: 
             self.driver.get(string)
         except TimeoutException as e:
@@ -61,6 +65,7 @@ class BillScraper:
                 print str(sys.exc_info()[0])+"\n"
                 self.driver.quit() 
                 sys.exit(1) 
+        '''
 
     def findElement(self, code, search):
         #print "Finding: "+search
@@ -84,10 +89,10 @@ class BillScraper:
             
     def get(self, string):
         #header = {"User-Agent": self.ua.random}
-        print string 
+        #print string 
         page = requests.get(string)#, header)
         self.tree = html.fromstring(page.content)
-        time.sleep(2)
+        time.sleep(1.5)
         #requests.exceptions.Timeout
         #request.get("str", timeout=10)
     
@@ -111,11 +116,12 @@ class BillScraper:
     def getAction(self, billID):
         actions = self.find('//div[@id="allActions-content"]/div/table/tbody/tr/td') # AllActions (date and action, drop 'Action By:'
         if len(actions) >= 2:
-            if actions[1].text == 'Senate' or actions[1].text == 'House' or actions[1].text.strip() == '':
+            if actions[1].text == 'Senate' or actions[1].text == 'House' or actions[1].text is None:
                 for act in range(0, len(actions)/3):
                     date = actions[act*3].text
-                    actBy = actions[act*3+1].text.strip()
-                    if actBy != '': actBy = actBy.split()[0]
+                    actBy = actions[act*3+1].text
+                    if actBy is not None: actBy = actBy.split()[0]
+                    else: actBy = ''
                     action = sanitize(actions[act*3+2].text.strip())
                     if len(action) >= 255: action = action[:255]
                     self.populator.insertAction(billID,date,action,actBy)
@@ -170,7 +176,7 @@ class BillScraper:
         elif 'house-resolution' in bid: return 'H.Res.'
         elif 'house-joint-resolution' in bid: return 'H.J.Res.'
         elif 'house-concurrent-resolution' in bid: return 'H.Con.Res.'
-        elif 'senate-bill' in bid: return 'S.R.'
+        elif 'senate-bill' in bid: return 'S.'
         elif 'senate-amendment' in bid: return 'S.Amdt.'
         elif 'senate-resolution' in bid: return 'S.Res.'
         elif 'senate-joint-resolution' in bid: return 'S.J.Res.'
@@ -181,7 +187,7 @@ class BillScraper:
         billLink = link.split('?')[0]+'/all-info'
         billName = self.getType(billLink.split('/')[5])+billLink.split('/')[6]
         conNum = int(filter(str.isdigit, str(billLink.split('/')[4])))
-        self.get(billLink)
+        self.fetch(billLink)
         try:
             name = sponsor.split(', ')[1]+" "+sponsor.split(', ')[0]
             fname = name.split()[0]
@@ -196,113 +202,57 @@ class BillScraper:
         #except:
         #    sys.stdout.write("\rIndex Error: {0}\n\r".format(billLink))
         #    sys.stdout.flush()
-
-    def getBillText(self, billNum, congNum, billType):
-        if congNum % 10 == 1: congNum = str(congNum)+'st'
-        elif congNum % 10 == 2: congNum = str(congNum)+'nd'
-        elif congNum % 10 == 3: congNum = str(congNum)+'rd'
-        else: congNum = str(congNum)+'th'
-        self.fetch("https://www.congress.gov/bill/%s-congress/%s/%s/text"%(str(congNum), billType, billNum))
-        #text = self.findElements('xpath', '//div[@id="main"]/div/table[@class="lbexTableStyleEnr"]')[0]
-        text = self.findElements('xpath', '//div[@id="main"]/div[2]')[0]
-        print len(text.get_attribute('innerHTML'))
-    
-    def getFromFile(self, fileName):
-        bills = open(fileName, 'r').readlines
-        for bill in bills:
-            self.getBillFromLink(bill)
-        
-    def scrapeForBillsByType(self, congNum, pageNum, t):
-        self.fetch("https://www.congress.gov/search?q=%7B%22source%22%3A%22legislation%22%2C%22congress%22%3A%22"+str(congNum)+"%22%2C%22type%22%3A%5B%22"+t+"%22%5D%7D&pageSize=250&page="+str(pageNum))
-        links = [ x.get_attribute('href') for x in self.findElements('xpath', '//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a')]
-        for link in links:
-            self.billFromLink(link)
-        
-    def scrapeForBills(self, congNum, pageNum):
-        self.fetch("https://www.congress.gov/search?q=%7B%22source%22%3A%22legislation%22%2C%22congress%22%3A%22"+(str(congNum))+"%22%7D&pageSize=250&page="+str(pageNum))
-        links = [ x.get_attribute('href') for x in self.findElements('xpath', '//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a')]
-        totTime = 0
-        for link in links:
-            start = time.time()
-            self.billFromLink(link)
-            end = time.time()
-            self.currentBill += 1
-            totTime += end-start
-            avgTime = totTime/(self.currentBill*1.0)
-            sys.stdout.write("\rProgress: [{0}{1}] {2}: {3:4.2f}>".format("="*(100*(self.currentBill/self.maxBill)), " "*(100*(1 - self.currentBill/self.maxBill)), str(self.currentBill), avgTime))
-            sys.stdout.flush()
             
-    def getBillsForCongressByType(self, congNum, numBills, t):
-        pages = numBills/250 + 1
-        for p in range(1, pages+1):
-            self.scrapeForBillsByType(congNum, p, t)
-    
-    def getBillsForCongress(self, congNum, numBills):
-        self.maxBill = numBills
-        pages = numBills/250 + 1
-        for p in range(1, pages+1):
-            self.scrapeForBills(congNum, p)
-
-    def getBillsByType(self, congNum, t):
-        self.fetch('https://www.congress.gov/search?q=%7B%22source%22%3A%22legislation%22%2C%22congress%22%3A%22'+str(congNum)+'%22%7D')
-        numBills = self.findElements("xpath", '//div[@id="facetbox_type"]/ul/li/label/a/span')
-        vals = {}
-        #for x in range(0, len(numBills)):
-        vals['bills'] = int(self.getText(numBills[0]))
-        vals['amendments'] = int(self.getText(numBills[1]))
-        vals['resolutions'] = int(self.getText(numBills[2]))
-        vals['joint-resolutions'] = int(self.getText(numBills[3]))
-        vals['concurrent-resolutions'] = int(self.getText(numBills[4]))
-        self.getBillsForCongressByType(congNum, vals[t], t)
-
-    def getAllBills(self):
-        lastCon = max(self.congrVals.keys())
-        for con in range(lastCon,93,-1):
-            self.getBillsForCongress(con, self.congrVals[con])
-            
-    def getDownTo(self, t, congNum, chamber, maxBill):
-        if congNum % 10 == 1: congNum = str(congNum)+'st'
-        elif congNum % 10 == 2: congNum = str(congNum)+'nd'
-        elif congNum % 10 == 3: congNum = str(congNum)+'rd'
-        else: congNum = str(congNum)+'th'
-        for bill in range(maxBill,1,-1):
-            billLink = "https://www.congress.gov/"+t+"/"+congNum+"-congress/"+chamber+t+"/"+str(bill)
-            self.billFromLink(billLink)
+    def scrapeCongress(self, congNum, chamber, t, m):
+        for page in range(1,m/250+2):
+            search = 'https://www.congress.gov/search?pageSize=250&page='+str(page)+'&q={%22source%22:%22legislation%22,%22type%22:%22'+t+'s%22,%22congress%22:%22'+str(congNum)+'%22,%22chamber%22:%22'+chamber+'%22}'
+            self.fetch(search)
+            links = [ x.get_attribute('href') for x in self.findElements('xpath', '//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a')]
+            spons = [x.text.split(' [')[0][5:] for x in self.findElements('xpath', '//div[@id="main"]/ol/li[@class="expanded"]/span[3]/a[1]')]
+            titles = [x.text for x in self.findElements('xpath','//div[@id="main"]/ol/li[@class="expanded"]/span[2]')]
+            for x in range(len(links)):
+                start = time.time()
+                self.billFromLink(spons[x], links[x], titles[x])
+                end = time.time()
+                self.currentBill += 1
+                self.totTime += end-start
+                avgTime = self.totTime/(self.currentBill*1.0)
+                #print "All Congress:  [{0}{1}]".format("="*(self.tdex), " "*(10-self.tdex))
+                #print "This Congress: [{0}{1}] {2}: {3:4.2f}>\r".format("="*(100*(self.currentBill/m)), " "*(100*(1 - self.currentBill/m)), str(self.currentBill), avgTime)
+                #sys.stdout.write(u"\u001b[2A")
+                #sys.stdout.write(" All Congress:  [{0}{1}]\n".format("="*(self.tdex), " "*(10-self.tdex)))
+                #sys.stdout.flush()
+                sys.stdout.write("\rProgress: [{0}{1}] {2}:{3} {4:4.2f}>\r".format("="*(80*(self.currentBill/m)), " "*(80*(1 - self.currentBill/m)), str(self.tdex), str(self.currentBill), avgTime))
+                sys.stdout.flush()
             
     def getCongressFile(self, fcon, lcon):
         t_index = {0:'bill',1:'amendment',2:'resolution',3:'concurrent-resolution',4:'joint-resolution'}
         i = 0
+        self.totTime = 0
         with open("conr"+str(fcon)+"-"+str(lcon)+".csv", "rb") as condat:
             conrows = csv.reader(condat)#, delimiter=' ', quotechar='|')
             for row in conrows:
-                tdex = 0
-                cong = int(row[0])
-                for cell in row[1:]:
+                self.tdex = 0
+                self.currentBill = 1
+                for cell in row:
                     m = int(cell)
-                    if tdex > 4:
-                        chamber = "house-"
-                        tdex -= 5
-                    else: chamber = "senate-"
-                    t = t_index[tdex]
-                    for page in range(0,m/250):
-                        self.maybeSomething(fcon+i, chamber, t, page+1)
+                    if self.tdex > 4:
+                        chamber = "House"
+                        b=1
+                    else: 
+                        chamber = "Senate"
+                        b=0
+                    t = t_index[self.tdex-5*b]
+                    self.scrapeCongress(fcon+i, chamber, t, m)
+                    self.tdex += 1
                 i += 1
-            
-    def maybeSomething(self, congNum, chamber, t, page):
-        search = 'https://www.congress.gov/search?pageSize=100&page='+str(page)+'&q={%22source%22:%22legislation%22,%22type%22:%22'+t+'s%22,%22congress%22:%22'+str(congNum)+'%22,%22chamber%22:%22'+chamber[:-1].title()+'%22}'
-        self.fetch(search)
-        links = [ x.get_attribute('href') for x in self.findElements('xpath', '//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a')]
-        spons = [x.text.split(' [')[0][5:] for x in self.findElements('xpath', '//div[@id="main"]/ol/li[@class="expanded"]/span[3]/a[1]')]
-        titles = [x.text for x in self.findElements('xpath','//div[@id="main"]/ol/li[@class="expanded"]/span[2]')]
-        for x in range(len(links)):
-            self.billFromLink(spons[x], links[x], titles[x])
             
     def getOneMax(self, congNum, chamber, t):
         if chamber: chamber = 'House'
         else: chamber = 'Senate'
         search = 'https://www.congress.gov/search?q=%7B%22source%22%3A%22legislation%22%2C%22congress%22%3A%5B%22'+str(congNum)+'%22%5D%2C%22chamber%22%3A%22'+chamber+'%22%2C%22type%22%3A%22'+t+'%22%7D'
         self.fetch(search)
-        ans = int(self.findElement('xpath','//div[@id="main"]/ol/li/span/a')[0].text.split('.')[-1])
+        ans = int(self.find('//div[@id="main"]/ol/li/span/a')[0].text.split('.')[-1])
         return ans
         
     def getMaxes(self, fcon, lcon): #should only need to run fully once
@@ -334,7 +284,7 @@ class BillScraper:
 
 
     def runTest(self):
-        self.getCongressFile(115,115)
+        self.getCongressFile(114,114)
         #self.getBillsByType(115, 'bills')
         #self.scrapeForBills1(115, 1)
         #print "No Test"
