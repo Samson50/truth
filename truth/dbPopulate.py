@@ -50,6 +50,18 @@ class DBPopulate:
         except:
             print "getLegIDCID Error: "+fname+" - "+lname+" "+str(sys.exc_info()[0])
             
+    def getContInfo(self):
+        try:
+            argument = ("SELECT legID, CID FROM Legislator WHERE NOT isnull(cid);")
+            self.cursor.execute(argument)
+            return self.cursor.fetchall()#[0][0]
+        except mysql.connector.errors.ProgrammingError as e:
+            print "getContInfo Error: "+str(e)
+        except exceptions.IndexError as e:
+            print "getContInfo Error: "+str(e)
+        except:
+            print "getContInfo Error: "+str(e)
+            
     def getContID(self, cname, t):
         try:
             argument = ("SELECT ContID FROM Contributor WHERE Name=\""+cname+"\";")
@@ -189,11 +201,32 @@ class DBPopulate:
         except:
             print "addCID Error: "+fname+" "+lname+": "+str(sys.exc_info()[0])
             
-    def addContribution(self, fname, lname, cname, amount, nature, IoC):
-        legID = self.getLegID(fname, lname)
-        if legID == 0:
-            legID = self.getLegID("%", lname)
-        contID = self.getContID(cname, IoC)
+    def getContributor(self, name, t):
+        try: 
+            argument = ("SELECT CID FROM Contributor WHERE NAME=\""+name+"\";")
+            self.cursor.execute(argument)
+            return self.cursor.fetchall()[0][0]
+        except mysql.connector.errors.ProgrammingError as e:
+            print "getContributor Error: "+name+" "+str(e)
+        except exceptions.IndexError as e:
+            self.insertContributor(name, t)
+            return self.getContributor(name, t)
+        except:
+            print "getContributor Error: "+name+" "+str(sys.exc_info()[0])
+
+
+    def insertContributor(self, name, t):
+        try: 
+            argument = ("INSERT INTO Contributor (Name, Type) VALUES (\""+name+"\", "+str(t)+");")
+            self.cursor.execute(argument)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print "insertContributor Error: "+name+": "+t+" "+str(e)
+        except:
+            print "insertContributor Error: "+str(sys.exc_info()[0])
+
+            
+    def insertContribution(self, legID, contID, amount, nature, IoC):
         try:
             argument =   ("INSERT INTO Money"
                                 "(LegID, ContID, Amount, Nature)"
@@ -202,7 +235,7 @@ class DBPopulate:
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
-            print "addCont Error: "+fname+" "+lname+": "+cname+" "+str(e)
+            print "addCont Error: "+str(legID)+": "+str(contID)+" "+str(e)
         except:
             print "addCont Error: "+str(sys.exc_info()[0])
 

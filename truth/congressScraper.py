@@ -32,16 +32,17 @@ class CongressScraper:
                           'WISCONSIN':'WI','WYOMING':'WY','NORTHERN MARIANA ISLANDS':'MP','GUAM':'GU','PUERTO RICO':'PR',
                           'VIRGIN ISLANDS':'VI','AMERICAN SAMOA':'AS','DISTRICT OF COLUMBIA':'DC','PALAU':'PW',
                           'FEDERATED STATES OF MICRONESIA':'FM','MARSHALL ISLANDS':'MH'}
-        print "WebDriver Initializing"
-        print "os.environ['MOZ_HEADLESS'] = '1'"
-        print "binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)\n"
+        #print "WebDriver Initializing"
+        #print "os.environ['MOZ_HEADLESS'] = '1'"
+        #print "binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)\n"
         self.initDriver()
         
     def initDriver(self):
-        os.environ['MOZ_HEADLESS'] = '1'
-        binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
-        self.driver = webdriver.Firefox(firefox_binary=binary)
-        self.driver.implicitly_wait(5)
+        #os.environ['MOZ_HEADLESS'] = '1'
+        #binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
+        #self.driver = webdriver.Firefox(firefox_binary=binary)
+        #self.driver.implicitly_wait(5)
+        self.driver = webdriver.PhantomJS()
         
     def restartDriver(self):
         self.driver.quit()
@@ -57,21 +58,16 @@ class CongressScraper:
         #request.get("str", timeout=10)
 
     def find(self, string):
-        if not self.testing:
-            return self.tree.xpath(string)
-        else:
-            print "Finding: "+string
-            item = self.tree.xpath(string)
-            for i in item:
-                print i
+        return self.tree.xpath(string)
 
     def fetch(self, string):
+        time.sleep(1.4)
+        self.driver.get(string)
+        self.tree = html.fromstring(self.driver.page_source)
+        '''
         if self.testing: print "Retrieving: "+string
         self.driver.get(string)
-        
-    def quickFetch(self, string):
-        self.restartDriver()
-        self.driver.get(string)
+        '''
 
     def findElements(self, code, search):
         if self.testing: print "Finding "+search
@@ -104,7 +100,7 @@ class CongressScraper:
     
     def addCommittee(self):
         self.fetch('http://clerk.house.gov/committee_info/oal.aspx')
-        committees = self.findElements('xpath', '//div/table/tbody/tr/td')#[0].text.split('\n')
+        committees = self.find('//div/table/tbody/tr/td')#[0].text.split('\n')
         for c in range(0, len(committees)/2):
             names = committees[c*2].text.split(', ')
             fname = names[1]
@@ -145,12 +141,12 @@ class CongressScraper:
 
     def scrapePage(self, target):
         self.fetch(target)
-        names = self.findElements("xpath", '//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/span/a')
+        names = self.find('//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/span/a')
         links = [link.get_attribute('href') for link in names]
         names = [name.text for name in names]
         names = [name.split(', ')[1]+' '+ ' '.join(name.split(', ')[0].split()[1:]) for name in names]
         self.names.extend(names)
-        data = self.findElements("xpath", '//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/div/div/span')
+        data = self.find('//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/div/div/span')
         for x in range(0, len(names)):
             self.addCongress(names[x], links[x], data)
         self.important_index = 0
@@ -204,6 +200,29 @@ class CongressScraper:
                     self.populator.insertCombo(fname,lname,comm)
         self.addCID()
         print "Legilator table populated"
+        
+    def getContributors(self, legID, cid, cycle): #padd cid string as necessary
+        self.get("https://www.opensecrets.org/members-of-congress/summary?cid=N"+str(cid)+"&cycle="+str(cycle)+"&type=C")
+        individuals = self.find("//div/div/div/div[1]/table/tbody/tr/td") #top indiv
+        industries = self.find("//div/div/div/div[2]/table/tbody/tr/td") #top indus
+        for individual in individuals:
+            conID = self.populator.getContributor(individual[0].text, 0)
+            self.populator.insertContribution(legID, conID, individual[1].text, 0) 
+            self.populator.insertContribution(legID, conID, individual[2].text, 1)
+            self.populator.insertContribution(legID, conID, individual[3].text, 2)
+        for industry in industries:
+            conID = self.populator.getContributor(industry[0].text, 1)
+            self.populator.insertContribution(legID, conID, industry[1].text, 0) 
+            self.populator.insertContribution(legID, conID, industry[2].text, 1)
+            self.populator.insertContribution(legID, conID, industry[3].text, 2)
+            
+    def getMoney(self):
+        #select legID, CID from legislator where not isnull(cid);
+        legData = self.populator.getContInfo()
+        for datum in legData:
+            self.getContributors(datum[0], datum[1], 2018)
+        print "Working"
+
 
     def runTest(self):
         self.addCID()
