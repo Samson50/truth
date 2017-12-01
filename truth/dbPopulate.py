@@ -278,7 +278,7 @@ class DBPopulate:
         except:
             print "insertComboBill Error: "+str(sys.exc_info()[0])
 
-    def insertRelatedBill(self, BillID, RBName, con):
+    def insertRelatedBill(self, BillID, RBName):
         try:
             argument =   ("INSERT INTO RelatedBill "
                                 "(BillID, RBName)"
@@ -289,7 +289,7 @@ class DBPopulate:
         except mysql.connector.errors.ProgrammingError as e:
             print "insertRelatedBill Error: "+str(BillID)+" Related Bill: "+str(RBName)+" "+str(e)
         except:
-            print "insertRelatedBill Error: "+str(sys.exc_info()[0])
+            print "insertRelatedBill Error: "+str(BillID)+" Related Bill: "+str(RBName)+" "+str(sys.exc_info()[0])
 
     def insertBillPolicy(self, billID, policy):
         policyID = self.getPolicyID(policy)

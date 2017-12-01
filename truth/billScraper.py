@@ -27,7 +27,7 @@ class BillScraper:
         self.firstCongress = firstCon
         self.populator = DBPopulate()
         self.initDriver()
-        #self.congrVals = self.createBillsDict()
+        self.testing = False
         self.maxBill = 0
         self.currentBill = 0
         
@@ -160,13 +160,13 @@ class BillScraper:
             self.populator.insertComboBill(billID, comm.strip())
 
     def getBillDetails(self, billID, conNum):
-        realatedBills = self.find('//div[@id="relatedBills-content"]/div/div/table/tbody/tr/td/a') # RelatedBills
+        realatedBills = self.find('//div[@id="relatedBills-content"]/div/div/table/tbody/tr/td[1]/a') # RelatedBills
         subjects = self.find('//div[@id="subjects-content"]/div/ul/li/a') # Policy Area
         self.getAction(billID)
         self.getCosponsor(billID)
         self.getCommittees(billID)
         for bill in realatedBills:
-            self.populator.insertRelatedBill(billID, bill.text.strip(), conNum)
+            self.populator.insertRelatedBill(billID, bill.text.strip())
         for subject in subjects:
             self.populator.insertBillPolicy(billID, subject.text.strip())
 
@@ -251,8 +251,12 @@ class BillScraper:
         if chamber: chamber = 'House'
         else: chamber = 'Senate'
         search = 'https://www.congress.gov/search?q=%7B%22source%22%3A%22legislation%22%2C%22congress%22%3A%5B%22'+str(congNum)+'%22%5D%2C%22chamber%22%3A%22'+chamber+'%22%2C%22type%22%3A%22'+t+'%22%7D'
+        if self.testing: print search
         self.fetch(search)
-        ans = int(self.find('//div[@id="main"]/ol/li/span/a')[0].text.split('.')[-1])
+        try:
+            ans = int(self.find('//div[@id="main"]/ol/li/span/a')[0].text.split('.')[-1])
+        except:
+            ans = 0
         return ans
         
     def getMaxes(self, fcon, lcon): #should only need to run fully once
@@ -285,6 +289,7 @@ class BillScraper:
 
     def runTest(self):
         self.getCongressFile(114,114)
+        #self.getMaxes(93,94)
         #self.getBillsByType(115, 'bills')
         #self.scrapeForBills1(115, 1)
         #print "No Test"
@@ -297,6 +302,7 @@ class BillScraper:
         self.driver.quit()
 
 test = BillScraper(107)
+test.testing = True
 run = time.time()
 test.runTest()
 end = time.time()
