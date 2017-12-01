@@ -205,6 +205,7 @@ class BillScraper:
             
     def scrapeCongress(self, congNum, chamber, t, m):
         for page in range(1,m/250+2):
+            m = m*1.0
             search = 'https://www.congress.gov/search?pageSize=250&page='+str(page)+'&q={%22source%22:%22legislation%22,%22type%22:%22'+t+'s%22,%22congress%22:%22'+str(congNum)+'%22,%22chamber%22:%22'+chamber+'%22}'
             self.fetch(search)
             links = [ x.get_attribute('href') for x in self.findElements('xpath', '//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a')]
