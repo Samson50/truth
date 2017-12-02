@@ -1,5 +1,3 @@
-import os
-import sys
 import time
 from dbPopulate import DBPopulate
 import requests
@@ -10,7 +8,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium import webdriver
 #107.134.155.108
 class CongressScraper:
@@ -100,7 +97,7 @@ class CongressScraper:
     
     def addCommittee(self):
         self.fetch('http://clerk.house.gov/committee_info/oal.aspx')
-        committees = self.find('//div/table/tbody/tr/td')#[0].text.split('\n')
+        committees = self.findElements('xpath','//div/table/tbody/tr/td')#[0].text.split('\n')
         for c in range(0, len(committees)/2):
             names = committees[c*2].text.split(', ')
             fname = names[1]
@@ -111,45 +108,38 @@ class CongressScraper:
                 self.congr[name]['committees'] = comms
 
 
-    def addCongress(self, name, link, items):
+    def addCongress(self, name, link, box):
         vals = {}
         vals['link'] = link
-        reference = self.important_index
-        for x in range(0,4):
-            item = items[min(reference+x,len(items)-1)].text
-            if 'State: ' in item:
-                if 'state' not in vals.keys():
-                    self.important_index += 1
-                    vals['state'] = item.split(': ')[1]
-            elif 'District' in item:
-                self.important_index += 1
-                vals['district'] = int(item.split(': ')[1])
-            elif 'Party' in item:
-                self.important_index += 1
-                vals['party'] = item.split(': ')[1][0]
-            elif 'Served:' in item:
-                self.important_index += 1
-                services = item.split('\n')[1:]
-                for service in services:
-                    ser = service.split(': ')[0]
-                    ter = service.split(': ')[1].split('-')
+        data = box.xpath('div/span')
+        for dat in data:
+            da = dat.getchildren()
+            if 'Served:' in da[0].text:
+                for d in da[1].getchildren()[0].getchildren():
+                    ser = d.text.strip().split(': ')[0]
+                    ter = int(d.text.strip().split(': ')[1].split('-')[0])
                     if 'Senate' in ser:
-                        vals['s'] = int(ter[0])
+                        vals['s'] = ter
                     elif 'House' in ser:
-                        vals['h'] = int(ter[0])
+                        vals['h'] = ter
+            elif 'District:' in da[0].text:
+                vals[da[0].text.strip().lower()] = int(da[1].text.strip())
+            else:
+                #print da[0].text.strip().lower()
+                #print da[1].text.strip()
+                vals[da[0].text.strip().lower()[:-1]] = da[1].text.strip()
         self.congr[name] = vals                                              
 
     def scrapePage(self, target):
         self.fetch(target)
         names = self.find('//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/span/a')
-        links = [link.get_attribute('href') for link in names]
+        links = [link.attrib['href'] for link in names]
         names = [name.text for name in names]
         names = [name.split(', ')[1]+' '+ ' '.join(name.split(', ')[0].split()[1:]) for name in names]
         self.names.extend(names)
-        data = self.find('//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/div/div/span')
+        boxes = self.find('//li[@class="expanded"]//div[@class="quick-search-member"]')
         for x in range(0, len(names)):
-            self.addCongress(names[x], links[x], data)
-        self.important_index = 0
+            self.addCongress(names[x], links[x], boxes[x])
         
     def getCongress(self):
         self.scrapePage("https://www.congress.gov/members?q=%7B%22congress%22%3A%22115%22%7D&pageSize=250&page=1")
@@ -166,11 +156,7 @@ class CongressScraper:
             if '"' in lname:
                 lname = ''.join(lname.split('"'))
             datum = self.congr[name]
-            #"(FirstName, LastName, Party, State, Job)"
             link = datum['link']
-            #print fname+" "+lname
-            #link = self.find('//div[@id="content"]/div/div/div/div/table/tbody/tr/td/a')[0].text
-            #print link
             SoH = ''
             year = 0
             if 's' in datum.keys():
@@ -187,9 +173,10 @@ class CongressScraper:
                 else: 
                     SoH = "S"
                     year = datum['h']
-            party = datum['party']
+            party = datum['party'][0]
             state = self.stateDict[datum['state'].upper()]
             link = datum['link']
+            #print fname,lname,party,state,SoH,year
             self.populator.insertLeg(fname,lname,party,state,SoH,year,link)
             if 'committees' in datum.keys():
                 for comm in datum['committees']:
@@ -237,6 +224,5 @@ class CongressScraper:
 #end = time.time()
 #print "Test completed in %0.3f seconds." % ((end-run))
 #test.close()
-
 #print "Exiting"
 #print "Closed"

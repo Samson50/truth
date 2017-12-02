@@ -1,4 +1,3 @@
-import os
 import sys
 import time
 import requests
@@ -6,7 +5,6 @@ import csv
 
 from random import randint 
 from lxml import html
-from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -17,8 +15,6 @@ from dbPopulate import DBPopulate
 def sanitize(text):
     if '"' in text:
         text = ''.join(text.split('"'))
-    #if "'" in text:
-    #    text = '\''.join(text.split("'"))
     return text
 
 
@@ -29,17 +25,9 @@ class BillScraper:
         self.initDriver()
         self.testing = False
         self.maxBill = 0
-        self.currentBill = 0
         
     def initDriver(self):
-        #print "WebDriver Initializing"
-        #os.environ['MOZ_HEADLESS'] = '1'
-        #print "os.environ['MOZ_HEADLESS'] = '1'"
-        #binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
-        #print "binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)"
-        #self.driver = webdriver.Firefox(firefox_binary=binary)
         self.driver = webdriver.PhantomJS()
-        #self.driver.implicitly_wait(3)
         
     def restartDriver(self):
         self.driver.quit()
@@ -49,69 +37,31 @@ class BillScraper:
         time.sleep(1.4)
         self.driver.get(string)
         self.tree = html.fromstring(self.driver.page_source)
-        #print "Retrieving: "+string
-        '''
-        try: 
-            self.driver.get(string)
-        except TimeoutException as e:
-            print "Web driver crashed on: "+string
-            print e
-            print "Restarting and retrying\n"
-            self.restartDriver()
-            try:
-                self.driver.get(string)
-            except:
-                print "Too many things went wrong: "+string
-                print str(sys.exc_info()[0])+"\n"
-                self.driver.quit() 
-                sys.exit(1) 
-        '''
 
     def findElement(self, code, search):
-        #print "Finding: "+search
         try:
             element_presence = EC.presence_of_element_located((By.XPATH, search))#.join(search.split('/')[:-1])))
-            #myElem =
             WebDriverWait(self.driver, 3).until(element_presence)
             return self.driver.find_elements(code, search)
         except TimeoutException:
             print 'Loading took too much time!'
 
     def findElements(self, code, search):
-        #print "Finding: "+search
         try:
-            #element_presence = EC.presence_of_element_located((By.XPATH, '//*'))#.join(search.split('/')[:-1])))
-            #myElem =
-            #WebDriverWait(self.driver, 3).until(element_presence)
             return self.driver.find_elements(code, search)
         except TimeoutException:
             print 'Loading took too much time!'
             
     def get(self, string):
-        #header = {"User-Agent": self.ua.random}
-        #print string 
         page = requests.get(string)#, header)
         self.tree = html.fromstring(page.content)
-        time.sleep(1.5)
-        #requests.exceptions.Timeout
-        #request.get("str", timeout=10)
+        time.sleep(1.2)
     
     def find(self, string):
         return self.tree.xpath(string)
 
     def getText(self, elem):
         return ''.join(elem.get_property('textContent').strip('[]').split(','))
-
-    def correlate(self, numBills):#craetes Dict of Congress # to # of bills
-        vals = {}
-        for x in range(0, len(numBills)):
-            vals[93+x] = int(self.getText(numBills[x]))
-        return vals
-
-    def createBillsDict(self):
-        self.fetch("https://www.congress.gov/search?q=%7B%22source%22%3A%22legislation%22%7D")
-        numBills = self.findElements("xpath", '//div[@id="facetbox_congress"]/ul/li/label/a/span')
-        return self.correlate(numBills)
 
     def getAction(self, billID):
         actions = self.find('//div[@id="allActions-content"]/div/table/tbody/tr/td') # AllActions (date and action, drop 'Action By:'
@@ -201,38 +151,44 @@ class BillScraper:
             print "Bill: "+billLink+" Error: "+str(e)
             
     def scrapeCongress(self, congNum, chamber, t, m):
+        if m == 0: return
+        currentBill = 0
+        totTime = 0
         for page in range(1,m/250+2):
             m = m*1.0
-            t2 = 1
             search = 'https://www.congress.gov/search?pageSize=250&page='+str(page)+'&q={%22source%22:%22legislation%22,%22type%22:%22'+t+'s%22,%22congress%22:%22'+str(congNum)+'%22,%22chamber%22:%22'+chamber+'%22}'
             self.fetch(search)
             if t == "amendment": 
-                t2 = 4
-                titles = [x.text for x in self.findElements('xpath','//div[@id="main"]/ol/li[@class="expanded"]/span[3]/a')]
+                links = [ x.attrib['href'] for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a[1]')]
+                lots = [x.text for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[@class="result-item"]/a[1]')]
+                spons = []
+                titles = []
+                for x in range(len(lots)):
+                    if ', ' in lots[x] and ' [' in lots[x]:
+                        spons.append(lots[x])
+                        titles.append(lots[x+1])
+                spons = [x.split(' [')[0][5:] for x in spons]
             else: 
-                t2 = 3
-                titles = [x.text for x in self.findElements('xpath','//div[@id="main"]/ol/li[@class="expanded"]/span[2]')]
-            links = [ x.attrib['href'] for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a')]
-            spons = [x.text.split(' [')[0][5:] for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span['+str(t2)+']/a[1]')]
+                titles = [x.text for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[2]')]
+                links = [ x.attrib['href'] for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a[1]')]
+                spons = [x.text.split(' [')[0][5:] for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[3]/a[1]')]
             for x in range(len(links)):
                 start = time.time()
                 self.billFromLink(spons[x], links[x], titles[x])
                 end = time.time()
-                self.currentBill += 1
-                self.totTime += end-start
-                avgTime = self.totTime/(self.currentBill*1.0)
-                sys.stdout.write("\rProgress: [{0}{1}] {2}:{3} {4:4.2f}>\r".format("="*(int(80*(self.currentBill/m))), " "*(int(80*(1 - self.currentBill/m))), str(self.tdex), str(self.currentBill), avgTime))
+                currentBill += 1
+                totTime += end-start
+                avgTime = totTime/(currentBill*1.0)
+                sys.stdout.write("\rProgress: [\%{0:2.1f}] {1}:{2} {3:4.2f}>\r".format(100*currentBill/m, str(self.tdex), str(currentBill), avgTime))# "="*(int(80*(self.currentBill/m))), " "*(int(80*(1 - self.currentBill/m)))
                 sys.stdout.flush()
             
     def getCongressFile(self, fcon, lcon):
         t_index = {0:'bill',1:'amendment',2:'resolution',3:'concurrent-resolution',4:'joint-resolution'}
         i = 0
-        self.totTime = 0
         with open("conr"+str(fcon)+"-"+str(lcon)+".csv", "rb") as condat:
             conrows = csv.reader(condat)#, delimiter=' ', quotechar='|')
             for row in conrows:
                 self.tdex = 0
-                self.currentBill = 1
                 for cell in row:
                     m = int(cell)
                     if self.tdex > 4:
@@ -288,14 +244,6 @@ class BillScraper:
 
     def runTest(self):
         self.getCongressFile(114,114)
-        #self.getMaxes(93,94)
-        #self.getBillsByType(115, 'bills')
-        #self.scrapeForBills1(115, 1)
-        #print "No Test"
-        #self.getBillsForCongress(115, self.congrVals[115])
-        #self.getAllBills()
-        #self.billFromLink("https://www.congress.gov/bill/115th-congress/house-bill/4431?")
-
 
     def close(self):
         self.driver.quit()
