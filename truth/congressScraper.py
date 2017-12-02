@@ -29,16 +29,9 @@ class CongressScraper:
                           'WISCONSIN':'WI','WYOMING':'WY','NORTHERN MARIANA ISLANDS':'MP','GUAM':'GU','PUERTO RICO':'PR',
                           'VIRGIN ISLANDS':'VI','AMERICAN SAMOA':'AS','DISTRICT OF COLUMBIA':'DC','PALAU':'PW',
                           'FEDERATED STATES OF MICRONESIA':'FM','MARSHALL ISLANDS':'MH'}
-        #print "WebDriver Initializing"
-        #print "os.environ['MOZ_HEADLESS'] = '1'"
-        #print "binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)\n"
         self.initDriver()
         
     def initDriver(self):
-        #os.environ['MOZ_HEADLESS'] = '1'
-        #binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
-        #self.driver = webdriver.Firefox(firefox_binary=binary)
-        #self.driver.implicitly_wait(5)
         self.driver = webdriver.PhantomJS()
         
     def restartDriver(self):

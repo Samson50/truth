@@ -159,28 +159,45 @@ class BillScraper:
             search = 'https://www.congress.gov/search?pageSize=250&page='+str(page)+'&q={%22source%22:%22legislation%22,%22type%22:%22'+t+'s%22,%22congress%22:%22'+str(congNum)+'%22,%22chamber%22:%22'+chamber+'%22}'
             self.fetch(search)
             if t == "amendment": 
-                links = [ x.attrib['href'] for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a[1]')]
-                lots = [x.text for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[@class="result-item"]/a[1]')]
-                spons = []
-                titles = []
-                for x in range(len(lots)):
-                    if ', ' in lots[x] and ' [' in lots[x]:
-                        spons.append(lots[x])
-                        titles.append(lots[x+1])
-                spons = [x.split(' [')[0][5:] for x in spons]
+                datas = self.find('//div[@id="main"]/ol/li[@class="expanded"]')
+                links = [x.xpath('span[@class="result-heading amendment-heading"]/a[1]')[0].attrib['href'] for x in datas]
+                stuff = [x.xpath('span[@class="result-item"]/a[1]') for x in datas]
+                idees = [x.xpath('span[@class="result-item"]/strong') for x in datas]
+                for x in range(len(links)):
+                    #print len(stuff[x]), len(idees[x])
+                    #print ' '
+                    if len(stuff[x]) != len(idees[x]):
+                        idees[x] = idees[x][1:]
+                    for y in range(len(stuff[x])):
+                        tst = idees[x][y].text
+                        val = stuff[x][y].text
+                        if 'Amends Bill:' in tst:
+                            title = val 
+                            #print tst, title
+                        elif 'Sponsor:' in tst:
+                            spon = val.split(' [')[0][5:]
+                            #print tst, spon
+                    start = time.time()
+                    self.billFromLink(spon, links[x], title)
+                    end = time.time()
+                    currentBill += 1
+                    totTime += end-start
+                    avgTime = totTime/(currentBill*1.0)
+                    sys.stdout.write("\rProgress: [\%{0:2.1f}] {1}:{2} {3:4.2f}>\r".format(100*currentBill/m, str(self.tdex), str(currentBill), avgTime))# "="*(int(80*(self.currentBill/m))), " "*(int(80*(1 - self.currentBill/m)))
+                    sys.stdout.flush()
             else: 
                 titles = [x.text for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[2]')]
                 links = [ x.attrib['href'] for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a[1]')]
                 spons = [x.text.split(' [')[0][5:] for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[3]/a[1]')]
-            for x in range(len(links)):
-                start = time.time()
-                self.billFromLink(spons[x], links[x], titles[x])
-                end = time.time()
-                currentBill += 1
-                totTime += end-start
-                avgTime = totTime/(currentBill*1.0)
-                sys.stdout.write("\rProgress: [\%{0:2.1f}] {1}:{2} {3:4.2f}>\r".format(100*currentBill/m, str(self.tdex), str(currentBill), avgTime))# "="*(int(80*(self.currentBill/m))), " "*(int(80*(1 - self.currentBill/m)))
-                sys.stdout.flush()
+                for x in range(len(links)):
+                    start = time.time()
+                    self.billFromLink(spons[x], links[x], titles[x])
+                    end = time.time()
+                    currentBill += 1
+                    totTime += end-start
+                    avgTime = totTime/(currentBill*1.0)
+                    sys.stdout.write("\rProgress: [\%{0:2.1f}] {1}:{2} {3:4.2f}>\r".format(100*currentBill/m, str(self.tdex), str(currentBill), avgTime))# "="*(int(80*(self.currentBill/m))), " "*(int(80*(1 - self.currentBill/m)))
+                    sys.stdout.flush()
             
     def getCongressFile(self, fcon, lcon):
         t_index = {0:'bill',1:'amendment',2:'resolution',3:'concurrent-resolution',4:'joint-resolution'}
