@@ -138,6 +138,10 @@ class BillScraper:
         billName = self.getType(billLink.split('/')[5])+billLink.split('/')[6]
         conNum = int(filter(str.isdigit, str(billLink.split('/')[4])))
         self.fetch(billLink)
+        if len(sponsor) == 0:
+            sponsor = "Gai, Nun"
+        else:
+            sponsor = sponsor.split(' [')[0][5:]
         try:
             name = sponsor.split(', ')[1]+" "+sponsor.split(', ')[0]
             fname = name.split()[0]
@@ -160,44 +164,45 @@ class BillScraper:
             self.fetch(search)
             if t == "amendment": 
                 datas = self.find('//div[@id="main"]/ol/li[@class="expanded"]')
-                links = [x.xpath('span[@class="result-heading amendment-heading"]/a[1]')[0].attrib['href'] for x in datas]
-                stuff = [x.xpath('span[@class="result-item"]/a[1]') for x in datas]
-                idees = [x.xpath('span[@class="result-item"]/strong') for x in datas]
-                for x in range(len(links)):
-                    #print len(stuff[x]), len(idees[x])
-                    #print ' '
-                    if len(stuff[x]) != len(idees[x]):
-                        idees[x] = idees[x][1:]
-                    for y in range(len(stuff[x])):
-                        tst = idees[x][y].text
-                        val = stuff[x][y].text
-                        if 'Amends Bill:' in tst:
-                            title = val 
-                            #print tst, title
-                        elif 'Sponsor:' in tst:
-                            spon = val.split(' [')[0][5:]
-                            #print tst, spon
+                for dat in datas:
+                    link = dat.xpath('span[@class="result-heading amendment-heading"]/a[1]')[0].attrib['href']
+                    things = dat.xpath('span[@class="result-item"]')
+                    spon = ''
+                    title = ''
+                    for thing in things:
+                        idee = thing.xpath('strong')[0].text
+                        if 'Sponsor' in idee:
+                            spon = thing.xpath('a[1]')[0].text
+                        elif 'Amends Bill:' in things: 
+                            title = thing.xpath('a[1]')[0].text
                     start = time.time()
-                    self.billFromLink(spon, links[x], title)
+                    self.billFromLink(spon, link, title)
                     end = time.time()
                     currentBill += 1
                     totTime += end-start
                     avgTime = totTime/(currentBill*1.0)
-                    sys.stdout.write("\rProgress: [\%{0:2.1f}] {1}:{2} {3:4.2f}>\r".format(100*currentBill/m, str(self.tdex), str(currentBill), avgTime))# "="*(int(80*(self.currentBill/m))), " "*(int(80*(1 - self.currentBill/m)))
+                    sys.stdout.write("\rProgress: [\%{0:2.1f}] {1}:{2} {3:4.2f}>\r".format(100*currentBill/m, str(self.tdex), str(currentBill), avgTime))
+                    # "="*(int(80*(self.currentBill/m))), " "*(int(80*(1 - self.currentBill/m)))
                     sys.stdout.flush()
             else: 
-                titles = [x.text for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[2]')]
-                links = [ x.attrib['href'] for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[1]/a[1]')]
-                spons = [x.text.split(' [')[0][5:] for x in self.find('//div[@id="main"]/ol/li[@class="expanded"]/span[3]/a[1]')]
-                for x in range(len(links)):
+                datas = self.find('//div[@id="main"]/ol/li[@class="expanded"]')
+                for dat in datas:
+                    link  = dat.xpath('span[@class="result-heading"]/a[1]')[0].attrib['href']
+                    title = dat.xpath('span[@class="result-title"]')[0].text
+                    spon = ''
+                    for deet in dat.xpath('span[@class="result-item"]'):
+                        idee = deet.xpath('strong')[0].text
+                        if 'Sponsor' in idee: spon = deet.xpath('a[1]')[0].text
                     start = time.time()
-                    self.billFromLink(spons[x], links[x], titles[x])
+                    self.billFromLink(spon, link, title)
                     end = time.time()
                     currentBill += 1
                     totTime += end-start
                     avgTime = totTime/(currentBill*1.0)
-                    sys.stdout.write("\rProgress: [\%{0:2.1f}] {1}:{2} {3:4.2f}>\r".format(100*currentBill/m, str(self.tdex), str(currentBill), avgTime))# "="*(int(80*(self.currentBill/m))), " "*(int(80*(1 - self.currentBill/m)))
+                    sys.stdout.write("\rProgress: [\%{0:2.1f}] {1}:{2} {3:4.2f}>\r".format(100*currentBill/m, str(self.tdex), str(currentBill), avgTime))
+                    # "="*(int(80*(self.currentBill/m))), " "*(int(80*(1 - self.currentBill/m)))
                     sys.stdout.flush()
+
             
     def getCongressFile(self, fcon, lcon):
         t_index = {0:'bill',1:'amendment',2:'resolution',3:'concurrent-resolution',4:'joint-resolution'}
