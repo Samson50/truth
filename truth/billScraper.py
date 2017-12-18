@@ -172,7 +172,10 @@ class BillScraper:
                     for thing in things:
                         idee = thing.xpath('strong')[0].text
                         if 'Sponsor' in idee:
-                            spon = thing.xpath('a[1]')[0].text
+                            try:
+                                spon = thing.xpath('a[1]')[0].text
+                            except:
+                                spon = ''
                         elif 'Amends Bill:' in things: 
                             title = thing.xpath('a[1]')[0].text
                     start = time.time()
@@ -265,7 +268,7 @@ class BillScraper:
 
 
     def runTest(self):
-        self.getCongressFile(114,114)
+        self.getCongressFile(111,112)
 
     def close(self):
         self.driver.quit()

@@ -1,3 +1,27 @@
+import requests
+
+from lxml import html
+from lxml.etree import tostring
+ans = requests.get("http://www.opensecrets.org/members-of-congress/summary?cid=N00032019&cycle=2018&type=C")
+#print ans.content
+tree = html.fromstring(ans.content) 
+#bill = '.'.join(tree.xpath("//body")[0].text.split())
+print tostring(tree)
+#people = tree.xpath('//members/member')
+#votes = tree.xpath('//members/member/vote_cast')
+#date = tree.xpath('//vote_date')[0].text
+#question = tree.xpath('//vote_question_text')[0].text
+#issue = tree.xpath('//document_name')
+#if len(issue): 
+#    issue = tree.xpath('//amendment_number')[0].text
+#print date
+#print question
+#print issue
+#print people[0].xpath('first_name')[0].text
+#print votes[0].text#tostring(votes[0])
+#print tostring(tree)
+
+"""
 import os, sys 
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium import webdriver
@@ -34,3 +58,4 @@ for box in boxes:
         print "*"
         
 print "End"
+"""

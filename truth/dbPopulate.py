@@ -27,7 +27,7 @@ class DBPopulate:
         except mysql.connector.errors.ProgrammingError as e:
             print fname+" "+lname+" "+str(e)
         except exceptions.IndexError as e:
-            print "getLegID Error: "+fname+" - "+lname+" "+str(e)
+            #print "getLegID Error: "+fname+" - "+lname+" "+str(e)
             return 0
         except:
             print "getLegID Error: "+fname+" - "+lname+" "+str(sys.exc_info()[0])
@@ -104,7 +104,8 @@ class DBPopulate:
         except mysql.connector.errors.ProgrammingError as e:
             print "getBillID Error for: "+str(billName)+": "+str(e)
         except exceptions.IndexError as e:
-            print e
+            print "getBillID Error: "+billName+" "+str(con)+" "+str(e)
+            return 0
         except:
             print "idk "+str(sys.exc_info()[0])
 
@@ -121,22 +122,29 @@ class DBPopulate:
             print "idk "+str(sys.exc_info()[0])
 
     def getLegIDVar(self, fname, lname, state, SoH):
-        if fname!= '':
-            if state != '':
+        # Stupid special cases for legislators with mismatched names
+        if fname == "E.": 
+            fname = ''
+            lname = "Bernice Johnson"
+        if len(fname) > 0:
+            #print fname, len(fname)
+            if len(state) > 0:
+                #print state, len(state)
                 try:
-                    argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND LastName LIKE \""+lname+"\" AND State = \""+state+"\" AND Job=\""+SoH+"\";")
+                    argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND LastName LIKE \"%"+lname+"\" AND State = \""+state+"\";")# AND Job=\""+SoH+"\";")
                     self.cursor.execute(argument)
                     return self.cursor.fetchall()[0][0]
                 except mysql.connector.errors.ProgrammingError as e:
                     print "getLegIDVar Error: "+fname+" - "+lname+" :"+state+" "+str(e)
                 except exceptions.IndexError as e:
-                    print "getLegIDVar Error: "+fname+" - "+lname+" :"+state+" "+str(e)
+                    return 0
+                    #print "getLegIDVar Error: "+fname+" - "+lname+" :"+state+" "+str(e)
                 except:
                     print "getLegIDVar Error: "+fname+" - "+lname+" :"+state+" "+str(sys.exc_info()[0])
 
             else:
                 try:
-                    argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND LastName LIKE \""+lname+"\" AND Job=\""+SoH+"\";")
+                    argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND LastName LIKE \""+lname+"\";")# AND Job=\""+SoH+"\";")
                     self.cursor.execute(argument)
                     return self.cursor.fetchall()[0][0]
                 except mysql.connector.errors.ProgrammingError as e:
@@ -145,29 +153,32 @@ class DBPopulate:
                     print "getLegIDVar Error: "+fname+" - "+lname+" :"+str(e)
                 except:
                     print "getLegIDVar Error: "+fname+" - "+lname+" :"+str(sys.exc_info()[0])
-        elif state != '':
+        elif len(state) > 0:
             try:
-                argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND State = \""+state+"\" AND Job=\""+SoH+"\";")
+                argument = ("SELECT LegID FROM Legislator WHERE LastName LIKE \"%"+lname+"\" AND State = \""+state+"\";")# AND Job=\""+SoH+"\";")
                 self.cursor.execute(argument)
                 return self.cursor.fetchall()[0][0]
             except mysql.connector.errors.ProgrammingError as e:
-                print "getLegIDVar Error: "+fname+" :"+state+" "+str(e)
+                print "getLegIDVar Error: "+lname+" :"+state+" "+str(e)
             except exceptions.IndexError as e:
-                print "getLegIDVar Error: "+fname+" :"+state+" "+str(e)
+                #print "getLegIDVar Error: "+lname+" :"+state+" "+str(e)
+                return 0
             except:
-                print "getLegIDVar Error: "+fname+" :"+state+" "+str(sys.exc_info()[0])
+                print "getLegIDVar Error: "+lname+" :"+state+" "+str(sys.exc_info()[0])
 
         else:
             try:
-                argument = ("SELECT LegID FROM Legislator WHERE FirstName LIKE \""+fname+"\" AND Job=\""+SoH+"\";")
+                argument = ("SELECT LegID FROM Legislator WHERE LastName LIKE \""+lname+"\";")# AND Job=\""+SoH+"\";")
                 self.cursor.execute(argument)
                 return self.cursor.fetchall()[0][0]
             except mysql.connector.errors.ProgrammingError as e:
-                print "getLegIDVar Error: "+fname+" :"+str(e)
+                print "getLegIDVar Error: "+lname+" :"+str(e)
             except exceptions.IndexError as e:
-                print "getLegIDVar Error: "+fname+" :"+str(e)
+                #print "getLegIDVar Error: "+lname+" :"+str(e)
+                return 0
             except:
-                print "getLegIDVar Error: "+fname+" :"+str(sys.exc_info()[0])
+                print "getLegIDVar Error: "+lname+" :"+str(sys.exc_info()[0])
+        return 0
 
 
 
@@ -203,11 +214,11 @@ class DBPopulate:
             
     def getContributor(self, name, t):
         try: 
-            argument = ("SELECT CID FROM Contributor WHERE NAME=\""+name+"\";")
+            argument = ("SELECT ContID FROM Contributor WHERE NAME=\""+name+"\";")
             self.cursor.execute(argument)
             return self.cursor.fetchall()[0][0]
         except mysql.connector.errors.ProgrammingError as e:
-            print "getContributor Error: "+name+" "+str(e)
+            print "getContributor Error: - "+name+" - "+str(e)
         except exceptions.IndexError as e:
             self.insertContributor(name, t)
             return self.getContributor(name, t)
@@ -226,7 +237,7 @@ class DBPopulate:
             print "insertContributor Error: "+str(sys.exc_info()[0])
 
             
-    def insertContribution(self, legID, contID, amount, nature, IoC):
+    def insertContribution(self, legID, contID, amount, nature):
         try:
             argument =   ("INSERT INTO Money"
                                 "(LegID, ContID, Amount, Nature)"
@@ -340,7 +351,7 @@ class DBPopulate:
 
     def insertRoll(self, voteID, question, issue):
         year = voteID/1000000
-        con = year-1901 - (year%2)
+        con = year-1901 - ((year+1)%2)
         billID = self.getBillID(issue, con)
         if len(question) >= 255: question = question[:255]
         try:
@@ -358,8 +369,10 @@ class DBPopulate:
 
     def insertVote(self, voteID, choice, fname, lname, state, SoH):
         legID = self.getLegIDVar(fname, lname, state, SoH)
+        choice = choice[:3]
+        if legID == 0: return
         try:
-            argument = ("INSERT INTO Vote (VoteID, Choice, LegID)"
+            argument = ("INSERT INTO Vote (VoteNum, Choice, LegID)"
                          "VALUES ("+str(voteID)+", \""+choice+"\", "+str(legID)+");")
             self.cursor.execute(argument)
             self.cnx.commit()

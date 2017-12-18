@@ -3,6 +3,7 @@ from dbPopulate import DBPopulate
 import requests
 
 from lxml import html
+from lxml.etree import tostring
 from fake_useragent import UserAgent
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
@@ -40,8 +41,7 @@ class CongressScraper:
         
     def get(self, string):
         if self.testing: print "Getting: "+string
-        header = {"User-Agent": self.ua.random}
-        page = requests.get(string, header)
+        page = requests.get(string)
         self.tree = html.fromstring(page.content)
         time.sleep(2)
         #requests.exceptions.Timeout
@@ -51,8 +51,9 @@ class CongressScraper:
         return self.tree.xpath(string)
 
     def fetch(self, string):
-        time.sleep(1.4)
+        print "Fetching: " +string
         self.driver.get(string)
+        time.sleep(1.4)
         self.tree = html.fromstring(self.driver.page_source)
         '''
         if self.testing: print "Retrieving: "+string
@@ -182,26 +183,34 @@ class CongressScraper:
         print "Legilator table populated"
         
     def getContributors(self, legID, cid, cycle): #padd cid string as necessary
-        self.get("https://www.opensecrets.org/members-of-congress/summary?cid=N"+str(cid)+"&cycle="+str(cycle)+"&type=C")
-        individuals = self.find("//div/div/div/div[1]/table/tbody/tr/td") #top indiv
-        industries = self.find("//div/div/div/div[2]/table/tbody/tr/td") #top indus
-        for individual in individuals:
+        self.fetch("https://www.opensecrets.org/members-of-congress/summary?cid=N"+str(cid).zfill(8)+"&cycle="+str(cycle)+"&type=C")
+        print "Tree"
+        print tostring(self.tree)
+        individuals = self.find("//body/div/div/div/div/div/div[3]/div[2]/table/tbody/tr") #top indiv
+        industries = self.find("//body/div/div/div/div/div/div[3]/div[4]/table/tbody/tr") #top indus
+        for x in range(0,len(individuals)):
+            individual = individuals[x].xpath('td')
+            print individual[0].text 
             conID = self.populator.getContributor(individual[0].text, 0)
-            self.populator.insertContribution(legID, conID, individual[1].text, 0) 
-            self.populator.insertContribution(legID, conID, individual[2].text, 1)
-            self.populator.insertContribution(legID, conID, individual[3].text, 2)
-        for industry in industries:
+            print conID
+            self.populator.insertContribution(legID, conID, ''.join(individual[1].text[1:].split(',')), 0) 
+            self.populator.insertContribution(legID, conID, ''.join(individual[2].text[1:].split(',')), 1)
+            self.populator.insertContribution(legID, conID, ''.join(individual[3].text[1:].split(',')), 2)
+        for x in range(0,len(industries)):
+            industry = industries[x].xpath('td')
+            print industry[0].text
             conID = self.populator.getContributor(industry[0].text, 1)
-            self.populator.insertContribution(legID, conID, industry[1].text, 0) 
-            self.populator.insertContribution(legID, conID, industry[2].text, 1)
-            self.populator.insertContribution(legID, conID, industry[3].text, 2)
+            print conID
+            self.populator.insertContribution(legID, conID, ''.join(industry[1].text[1:].split(',')), 0) 
+            self.populator.insertContribution(legID, conID, ''.join(industry[2].text[1:].split(',')), 1)
+            self.populator.insertContribution(legID, conID, ''.join(industry[3].text[1:].split(',')), 2)
             
     def getMoney(self):
         #select legID, CID from legislator where not isnull(cid);
         legData = self.populator.getContInfo()
         for datum in legData:
+            print datum 
             self.getContributors(datum[0], datum[1], 2018)
-        print "Working"
 
 
     def runTest(self):
@@ -211,11 +220,11 @@ class CongressScraper:
         self.populator.close()
         self.driver.quit()
 
-#test = CongressScraper()
-#run = time.time()
-#test.populateDB()
-#end = time.time()
-#print "Test completed in %0.3f seconds." % ((end-run))
-#test.close()
-#print "Exiting"
-#print "Closed"
+test = CongressScraper()
+run = time.time()
+test.getMoney()
+end = time.time()
+print "Test completed in %0.3f seconds." % ((end-run))
+test.close()
+print "Exiting"
+print "Closed"
