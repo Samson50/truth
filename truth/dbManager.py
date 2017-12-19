@@ -41,6 +41,7 @@ class DBManager:
                                 "LegID int,"
                                 "ContID int,"
                                 "Cycle int,"
+                                "Nature int,"
                                 "Amount int"
                                 ");"
                             )
@@ -56,7 +57,7 @@ class DBManager:
             money_table =   ("CREATE TABLE Contributor ("
                                 "ContID int auto_increment primary key,"
                                 "Name char(100),"
-                                "Type binary(1)"
+                                "Type int"
                                 ");"
                             )
             self.cursor.execute(money_table)
@@ -312,6 +313,8 @@ class DBManager:
 
 
 #test = DBManager()
+#test.drop('contributor')
+#test.createContributor()
 #test.recreateAll()
 #test.close()
 #test.createComm()

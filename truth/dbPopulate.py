@@ -237,11 +237,11 @@ class DBPopulate:
             print "insertContributor Error: "+str(sys.exc_info()[0])
 
             
-    def insertContribution(self, legID, contID, amount, nature):
+    def insertContribution(self, legID, contID, amount, nature, cycle):
         try:
             argument =   ("INSERT INTO Money"
-                                "(LegID, ContID, Amount, Nature)"
-                                "VALUES ("+legID+", "+contID+", "+amount+", "+nature+");"
+                                "(LegID, ContID, Amount, Nature, Cycle)"
+                                "VALUES ("+str(legID)+", "+str(contID)+", "+amount+", "+str(nature)+", "+str(cycle)+");"
                         )
             self.cursor.execute(argument)
             self.cnx.commit()

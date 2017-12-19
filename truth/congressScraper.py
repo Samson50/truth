@@ -185,25 +185,23 @@ class CongressScraper:
     def getContributors(self, legID, cid, cycle): #padd cid string as necessary
         self.fetch("https://www.opensecrets.org/members-of-congress/summary?cid=N"+str(cid).zfill(8)+"&cycle="+str(cycle)+"&type=C")
         print "Tree"
-        print tostring(self.tree)
+        #print tostring(self.tree)
         individuals = self.find("//body/div/div/div/div/div/div[3]/div[2]/table/tbody/tr") #top indiv
         industries = self.find("//body/div/div/div/div/div/div[3]/div[4]/table/tbody/tr") #top indus
         for x in range(0,len(individuals)):
             individual = individuals[x].xpath('td')
             print individual[0].text 
             conID = self.populator.getContributor(individual[0].text, 0)
-            print conID
-            self.populator.insertContribution(legID, conID, ''.join(individual[1].text[1:].split(',')), 0) 
-            self.populator.insertContribution(legID, conID, ''.join(individual[2].text[1:].split(',')), 1)
-            self.populator.insertContribution(legID, conID, ''.join(individual[3].text[1:].split(',')), 2)
+            self.populator.insertContribution(legID, conID, ''.join(individual[1].text[1:].split(',')), 0, cycle) 
+            self.populator.insertContribution(legID, conID, ''.join(individual[2].text[1:].split(',')), 1, cycle)
+            self.populator.insertContribution(legID, conID, ''.join(individual[3].text[1:].split(',')), 2, cycle)
         for x in range(0,len(industries)):
             industry = industries[x].xpath('td')
             print industry[0].text
             conID = self.populator.getContributor(industry[0].text, 1)
-            print conID
-            self.populator.insertContribution(legID, conID, ''.join(industry[1].text[1:].split(',')), 0) 
-            self.populator.insertContribution(legID, conID, ''.join(industry[2].text[1:].split(',')), 1)
-            self.populator.insertContribution(legID, conID, ''.join(industry[3].text[1:].split(',')), 2)
+            self.populator.insertContribution(legID, conID, ''.join(industry[1].text[1:].split(',')), 0, cycle) 
+            self.populator.insertContribution(legID, conID, ''.join(industry[2].text[1:].split(',')), 1, cycle)
+            self.populator.insertContribution(legID, conID, ''.join(industry[3].text[1:].split(',')), 2, cycle)
             
     def getMoney(self):
         #select legID, CID from legislator where not isnull(cid);
