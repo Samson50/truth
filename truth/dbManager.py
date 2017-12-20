@@ -24,6 +24,7 @@ class DBManager:
                                 "Job char(1),"
                                 "First int,"
                                 "Website char(255),"
+                                #"PicURL char(255),"
                                 "cid int"
                                 ");"
                             )
@@ -89,6 +90,7 @@ class DBManager:
                                 "RollID int auto_increment primary key,"
                                 "VoteNum int," # year*1000000+voteNum*10+1
                                 "Question char(255),"
+                                #"VoteDate DATE,"
                                 "Issue int" #References BillID
                                 ");"
                             )
@@ -102,10 +104,11 @@ class DBManager:
     def createBill(self):
         try:
             arguments =   ("CREATE TABLE Bill ("
-                                "BillID int auto_increment primary key,"
+                                "BillID int auto_increment primary key,"#Change to int notnull
                                 "Name char(20),"
                                 "Congress int,"
                                 "Sponsor int," # References LegID
+                                #"LastDate DATE,"
                                 "Summary char(255)"
                                 #"FullText TEXT" #MAX: 9457090 MED 16,777,215
                                 #"FullText ???"

@@ -16,7 +16,6 @@ class CongressScraper:
         self.populator = DBPopulate()
         self.ua = UserAgent()
         self.important_index = 0
-        self.names = []
         self.congr = {}
         self.testing = True
         self.stateDict = {'ALABAMA':'AL','ALASKA':'AK','ARIZONA':'AZ','ARKANSAS':'AR','CALIFORNIA':'CA','COLORADO':'CO',
@@ -106,6 +105,16 @@ class CongressScraper:
         vals = {}
         vals['link'] = link
         data = box.xpath('div/span')
+        #data = person.xpath('/div[2]/div/span')
+        #name = person.xpath('span/a')[0].text
+        #name = name.split(', ')[1]+' '+ ' '.join(name.split(', ')[0].split()[1:]
+        #link = person.xpath('span/a')[0].attrib['href']
+        #try: 
+        #    pic = "https://www.congress.gov/" + person.xpath('div/div/img')[0].attrib['src']
+        #except:
+        #    pic = "none"
+        #    print name
+        #dat = person.xpath('/div[2]/div/span')
         for dat in data:
             da = dat.getchildren()
             if 'Served:' in da[0].text:
@@ -125,14 +134,18 @@ class CongressScraper:
         self.congr[name] = vals                                              
 
     def scrapePage(self, target):
+        #TODO: Finish this implementation
         self.fetch(target)
         names = self.find('//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/span/a')
+        #people = self.find('//li[@class="expanded"]')#//div[@class="quick-search-member"]')
         links = [link.attrib['href'] for link in names]
         names = [name.text for name in names]
         names = [name.split(', ')[1]+' '+ ' '.join(name.split(', ')[0].split()[1:]) for name in names]
-        self.names.extend(names)
+        #pics = self.find('//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/span/')
         boxes = self.find('//li[@class="expanded"]//div[@class="quick-search-member"]')
         for x in range(0, len(names)):
+        #for x in range(0, len(people)):
+            #self.addCongress(people[x])
             self.addCongress(names[x], links[x], boxes[x])
         
     def getCongress(self):
