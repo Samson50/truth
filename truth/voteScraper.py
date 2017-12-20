@@ -44,6 +44,10 @@ class VoteScraper:
 
     def getText(self, elem):
         return ''.join(elem.get_property('textContent').strip())
+
+    def getMonth(self, mon):
+        months = {'Jan':'01','Feb':'02','Mar':'03','Apr':'04','May':'05','Jun':'06','Jul':'07','Aug':'08','Sep':'09','Oct':'10','Nov':'11','Dec':'12'}
+        return months[mon[:3]]
     
     def addRoll(self, year, voteNum, issue, question, date, SoH):
         if SoH == 'S':
@@ -52,7 +56,7 @@ class VoteScraper:
             vid = year*1000000+voteNum*10+0
         #issue = '.'.join(issue.split())
         #print vid, question
-        self.populator.insertRoll(vid, question, issue)
+        self.populator.insertRoll(vid, question, issue)#, date)
         
     def addVotes(self, votes, year, voteNum, SoH):
         if SoH == 'S':
@@ -90,7 +94,8 @@ class VoteScraper:
         people = self.find('//recorded-vote/legislator')
         vote = self.find('//recorded-vote/vote')
         question = self.find('//vote-question')[0].text
-        date = self.find('//action-date')[0].text
+        date = self.find('//action-date')[0].text.split('-')
+        date = date[2]+'-'+self.getMonth(date[1])+'-'+date[0]
         votes = {}
         for x in range(0, len(people)):
             person = people[x].get('unaccented-name')
@@ -128,10 +133,11 @@ class VoteScraper:
         people = self.find('//members/member')
         votes_cast = self.find('//members/member/vote_cast')
         try:
-            date = self.find('//vote_date')[0].text
+            date = self.find('//vote_date')[0].text.split()
         except:
             print etree.tostring(self.tree)
-        date = date.split()[1][:-1]+'-'+date.split()[0][:3]+'-'+date.split()[2][:-1]
+        date = date[2][:-1]+'-'+getMonth(date[0][:3])+'-'+date[1][:-1]
+        #date = date.split()[1][:-1]+'-'+date.split()[0][:3]+'-'+date.split()[2][:-1]
         question = self.find('//vote_question_text')[0].text
         issue = self.find('//document_name')[0]
         if issue.text is None: 

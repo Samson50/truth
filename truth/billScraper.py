@@ -246,6 +246,8 @@ class BillScraper:
         sponsor = sponsor[5:].split(' [')[0]
         title = self.find('//div[@id="titles_main"]/div/div/div/p')[0].text
         latest = self.find('//div[@id="content"]/div/div/div/table/tbody/tr[3]/td')[0].text.split()[2]
+        latest = latest.split('/')
+        latest = '-'.join(latest[2],latest[0],latest[1])
         try:
             name = sponsor.split(', ')[1]+" "+sponsor.split(', ')[0]
             fname = name.split()[0]
@@ -254,7 +256,7 @@ class BillScraper:
             if len(title) >= 255: title = title[0:253]
             print billName, fname, lname, latest
             print title
-            #self.populator.insertBill(billName, conNum, fname, lname, title)
+            #self.populator.insertBill(billName, conNum, fname, lname, title, latest)
             #billID = #self.populator.getBillID(billName, conNum)
             #self.getBillDetails(billID, conNum)
         except UnboundLocalError as e:

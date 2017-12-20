@@ -266,13 +266,13 @@ class DBPopulate:
         except:
             print "idk "+str(sys.exc_info()[0])
 
-    def insertBill(self, name, con, fname, lname, summary):
+    def insertBill(self, name, con, fname, lname, summary):#, date):
         spon = self.getLegID(fname,lname)
         #print spon
         try:
             argument = ("INSERT INTO Bill "
-                            "(Name, Congress, Sponsor, Summary)"
-                            "VALUES (\""+name+"\", "+str(con)+", "+str(spon)+", \""+summary+"\")")
+                            "(Name, Congress, Sponsor, Summary)"#, LastDate)"
+                            "VALUES (\""+name+"\", "+str(con)+", "+str(spon)+", \""+summary+"\")")#, "+str(date)+")")
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
@@ -349,15 +349,15 @@ class DBPopulate:
         except:
             print "insertBillPolicy Error: "+str(sys.exc_info()[0])
 
-    def insertRoll(self, voteID, question, issue):
+    def insertRoll(self, voteID, question, issue):#, date):
         year = voteID/1000000
         con = year-1901 - ((year+1)%2)
         billID = self.getBillID(issue, con)
         if len(question) >= 255: question = question[:255]
         try:
             argument = ("INSERT INTO Roll"
-                        "(VoteNum, Question, Issue)"
-                        "VALUES ("+str(voteID)+", \""+question+"\", "+str(billID)+");")
+                        "(VoteNum, Question, Issue)"#, VoteDate)"
+                        "VALUES ("+str(voteID)+", \""+question+"\", "+str(billID)+");")#, "+str(date)+");")
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
