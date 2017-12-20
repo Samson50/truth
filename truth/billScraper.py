@@ -206,6 +206,61 @@ class BillScraper:
                     # "="*(int(80*(self.currentBill/m))), " "*(int(80*(1 - self.currentBill/m)))
                     sys.stdout.flush()
 
+    def getConth(self, con):
+        if (con%10 == 1): return str(con)+"st"
+        if (con%10 == 2): return str(con)+"nd"
+        if (con%10 == 3): return str(con)+"rd"
+        else: return str(con)+"th"
+
+    def getCongressFile2(self, fcon, lcon):
+        t_index = {0:'bill',1:'amendment',2:'resolution',3:'concurrent-resolution',4:'joint-resolution'}
+        i = 0
+        with open("conr"+str(fcon)+"-"+str(lcon)+".csv", "rb") as condat:
+            conrows = csv.reader(condat)#, delimiter=' ', quotechar='|')
+            for row in conrows:
+                self.tdex = 0
+                for cell in row:
+                    m = int(cell)
+                    if self.tdex > 4:
+                        chamber = "house-"
+                        b=1
+                    else: 
+                        chamber = "senate-"
+                        b=0
+                    t = t_index[self.tdex-5*b]
+                    if t == "amendment": type = "amendment"
+                    else: type = "bill"
+                    t = chamber + t
+                    billID = (fcon+i)*100000+self.tdex*10000
+                    for (n in range(1,(m+1))):
+                        billFromLink2("https://www.congress.gov/"+type+"/"+getConth(fcon+i)+"-congress/"+t+"/"+str(n)"/all-info",fcon+i,billID+n)
+                    self.tdex += 1
+                i += 1
+
+    def billFromLink2(self, billLink, conNum, billID):#Takes simple link to bill
+        #TODO Add latest to .insertBill(...)
+        self.fetch(billLink)
+        print billLink
+        billName = self.getType(billLink.split('/')[5])+billLink.split('/')[6]
+        sponsor = self.find('//div[@id="content"]/div/div/div/table/tbody/tr[1]/td/a')[0].text
+        sponsor = sponsor[5:].split(' [')[0]
+        title = self.find('//div[@id="titles_main"]/div/div/div/p')[0].text
+        latest = self.find('//div[@id="content"]/div/div/div/table/tbody/tr[3]/td')[0].text.split()[2]
+        try:
+            name = sponsor.split(', ')[1]+" "+sponsor.split(', ')[0]
+            fname = name.split()[0]
+            lname = sanitize(' '.join(name.split()[1:]))
+            title = sanitize(title)# [0].text.strip())
+            if len(title) >= 255: title = title[0:253]
+            print billName, fname, lname, latest
+            print title
+            #self.populator.insertBill(billName, conNum, fname, lname, title)
+            #billID = #self.populator.getBillID(billName, conNum)
+            #self.getBillDetails(billID, conNum)
+        except UnboundLocalError as e:
+            print "Bill: "+billLink+" Error: "+str(e)
+
+
             
     def getCongressFile(self, fcon, lcon):
         t_index = {0:'bill',1:'amendment',2:'resolution',3:'concurrent-resolution',4:'joint-resolution'}
