@@ -3,7 +3,7 @@ import time
 import requests
 import csv
 
-from random import randint 
+from random import randint
 from lxml import html
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -25,10 +25,10 @@ class BillScraper:
         self.initDriver()
         self.testing = False
         self.maxBill = 0
-        
+
     def initDriver(self):
         self.driver = webdriver.PhantomJS()
-        
+
     def restartDriver(self):
         self.driver.quit()
         self.initDriver()
@@ -51,12 +51,12 @@ class BillScraper:
             return self.driver.find_elements(code, search)
         except TimeoutException:
             print 'Loading took too much time!'
-            
+
     def get(self, string):
         page = requests.get(string)#, header)
         self.tree = html.fromstring(page.content)
         time.sleep(1.2)
-    
+
     def find(self, string):
         return self.tree.xpath(string)
 
@@ -153,7 +153,7 @@ class BillScraper:
             self.getBillDetails(billID, conNum)
         except UnboundLocalError as e:
             print "Bill: "+billLink+" Error: "+str(e)
-            
+
     def scrapeCongress(self, congNum, chamber, t, m):
         if m == 0: return
         currentBill = 0
@@ -162,7 +162,7 @@ class BillScraper:
             m = m*1.0
             search = 'https://www.congress.gov/search?pageSize=250&page='+str(page)+'&q={%22source%22:%22legislation%22,%22type%22:%22'+t+'s%22,%22congress%22:%22'+str(congNum)+'%22,%22chamber%22:%22'+chamber+'%22}'
             self.fetch(search)
-            if t == "amendment": 
+            if t == "amendment":
                 datas = self.find('//div[@id="main"]/ol/li[@class="expanded"]')
                 for dat in datas:
                     link = dat.xpath('span[@class="result-heading amendment-heading"]/a[1]')[0].attrib['href']
@@ -176,7 +176,7 @@ class BillScraper:
                                 spon = thing.xpath('a[1]')[0].text
                             except:
                                 spon = ''
-                        elif 'Amends Bill:' in things: 
+                        elif 'Amends Bill:' in things:
                             title = thing.xpath('a[1]')[0].text
                     start = time.time()
                     self.billFromLink(spon, link, title)
@@ -187,7 +187,7 @@ class BillScraper:
                     sys.stdout.write("\rProgress: [\%{0:2.1f}] {1}:{2} {3:4.2f}>\r".format(100*currentBill/m, str(self.tdex), str(currentBill), avgTime))
                     # "="*(int(80*(self.currentBill/m))), " "*(int(80*(1 - self.currentBill/m)))
                     sys.stdout.flush()
-            else: 
+            else:
                 datas = self.find('//div[@id="main"]/ol/li[@class="expanded"]')
                 for dat in datas:
                     link  = dat.xpath('span[@class="result-heading"]/a[1]')[0].attrib['href']
@@ -215,6 +215,7 @@ class BillScraper:
     def getCongressFile2(self, fcon, lcon):
         t_index = {0:'bill',1:'amendment',2:'resolution',3:'concurrent-resolution',4:'joint-resolution'}
         i = 0
+        totTime = 0.0
         with open("conr"+str(fcon)+"-"+str(lcon)+".csv", "rb") as condat:
             conrows = csv.reader(condat)#, delimiter=' ', quotechar='|')
             for row in conrows:
@@ -224,46 +225,75 @@ class BillScraper:
                     if self.tdex > 4:
                         chamber = "house-"
                         b=1
-                    else: 
+                    else:
                         chamber = "senate-"
                         b=0
                     t = t_index[self.tdex-5*b]
-                    if t == "amendment": type = "amendment"
-                    else: type = "bill"
+                    if t == "amendment": billType = "amendment"
+                    else: billType = "bill"
                     t = chamber + t
                     billID = (fcon+i)*100000+self.tdex*10000
-                    for (n in range(1,(m+1))):
-                        billFromLink2("https://www.congress.gov/"+type+"/"+getConth(fcon+i)+"-congress/"+t+"/"+str(n)"/all-info",fcon+i,billID+n)
+                    n=1
+                    currentBill = 1.0
+                    for x in range(1,(m+1)):
+                        if self.tdex == 9 and n == 1:
+                            n = 34
+                            currentBill = n*1.0
+                        start = time.time()
+                        self.billFromLink2("https://www.congress.gov/"+billType+"/"+self.getConth(fcon+i)+"-congress/"+t+"/"+str(n)+"/all-info",fcon+i,billID+n)
+                        end = time.time()
+                        currentBill += 1
+                        totTime += end-start
+                        avgTime = totTime/(currentBill)#*1.0)
+                        sys.stdout.write("\rProgress: [\%{0:2.1f}] {1}:{2} {3:4.2f}>\r".format(100*currentBill/m, str(self.tdex), str(currentBill), avgTime))
+                        sys.stdout.flush()
+                        n += 1
                     self.tdex += 1
                 i += 1
 
     def billFromLink2(self, billLink, conNum, billID):#Takes simple link to bill
-        #TODO Add latest to .insertBill(...)
         self.fetch(billLink)
-        print billLink
+        #print billLink
         billName = self.getType(billLink.split('/')[5])+billLink.split('/')[6]
-        sponsor = self.find('//div[@id="content"]/div/div/div/table/tbody/tr[1]/td/a')[0].text
-        sponsor = sponsor[5:].split(' [')[0]
-        title = self.find('//div[@id="titles_main"]/div/div/div/p')[0].text
-        latest = self.find('//div[@id="content"]/div/div/div/table/tbody/tr[3]/td')[0].text.split()[2]
-        latest = latest.split('/')
-        latest = '-'.join(latest[2],latest[0],latest[1])
+        latest = ''
+        fname = ''
+        lname = ''
+        title = ''
+        headers = self.find('//div[@id="content"]/div/div/div[@class="overview"]/table/tbody/tr')
+        for head in headers:
+            h = head.xpath('th')[0].text
+            if 'Latest Action' in h:
+                latest = head.xpath('td')[0].text[:60]
+                if ' - ' in latest: latest = latest.split()[2].split('/')
+                else: latest = latest.split()[0].split('/')
+                latest = '-'.join([latest[2],latest[0],latest[1]])
+            elif 'Sponsor' in h:
+                try:
+                    sponsor = head.xpath('td/a')[0].text[5:].split(' [')[0]
+                except:
+                    sponsor = head.xpath('td')[0].text
+                    break
+                name = sponsor.split(', ')[1]+" "+sponsor.split(', ')[0]
+                fname = name.split()[0]
+                lname = sanitize(' '.join(name.split()[1:]))
         try:
-            name = sponsor.split(', ')[1]+" "+sponsor.split(', ')[0]
-            fname = name.split()[0]
-            lname = sanitize(' '.join(name.split()[1:]))
-            title = sanitize(title)# [0].text.strip())
+            title = self.find('//div[@id="titles_main"]/div/div/div/p')[0].text
+        except:
+            try: title = self.find('//div[@id="content"]/div[@id="main"]/p')[0].text
+            except: return
+        try:
+            title = sanitize(title.strip())
             if len(title) >= 255: title = title[0:253]
-            print billName, fname, lname, latest
-            print title
-            #self.populator.insertBill(billName, conNum, fname, lname, title, latest)
-            #billID = #self.populator.getBillID(billName, conNum)
-            #self.getBillDetails(billID, conNum)
+            #print billID, billName, fname, lname, latest
+            #print title
+            if sponsor == '' and latest == '': return
+            self.populator.insertBill(billID, billName, conNum, fname, lname, title, latest)
+            #billID = self.populator.getBillID(billName, conNum)
+            self.getBillDetails(billID, conNum)
         except UnboundLocalError as e:
             print "Bill: "+billLink+" Error: "+str(e)
 
 
-            
     def getCongressFile(self, fcon, lcon):
         t_index = {0:'bill',1:'amendment',2:'resolution',3:'concurrent-resolution',4:'joint-resolution'}
         i = 0
@@ -276,14 +306,14 @@ class BillScraper:
                     if self.tdex > 4:
                         chamber = "House"
                         b=1
-                    else: 
+                    else:
                         chamber = "Senate"
                         b=0
                     t = t_index[self.tdex-5*b]
                     self.scrapeCongress(fcon+i, chamber, t, m)
                     self.tdex += 1
                 i += 1
-            
+
     def getOneMax(self, congNum, chamber, t):
         if chamber: chamber = 'House'
         else: chamber = 'Senate'
@@ -295,7 +325,7 @@ class BillScraper:
         except:
             ans = 0
         return ans
-        
+
     def getMaxes(self, fcon, lcon): #should only need to run fully once
         types = [
                 ['bills','amendments','resolutions','concurrent-resolutions','joint-resolutions'],
@@ -325,7 +355,7 @@ class BillScraper:
 
 
     def runTest(self):
-        self.getCongressFile(111,112)
+        self.getCongressFile2(114,114)
 
     def close(self):
         self.driver.quit()

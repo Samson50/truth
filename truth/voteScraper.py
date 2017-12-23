@@ -17,7 +17,7 @@ class VoteScraper:
         self.max = 0
         self.current = 0
         self.driver = webdriver.PhantomJS()
-        
+
     def fetch(self, string):
         print "Retrieving: "+string
         self.driver.get(string)
@@ -26,19 +26,19 @@ class VoteScraper:
     def findElements(self, code, search):
         #print '\n'#"Finding element: "+search
         return self.driver.find_elements(code, search)
-    
+
     def getSpecial(self, string):
         self.driver.get(string)
         page = self.driver.page_source
         page = page.split('?>')[1]
         self.tree = html.fromstring(page)
-    
+
     def get(self, string):
         #print string
         page = requests.get(string)#, header)
         self.tree = html.fromstring(page.content)
         time.sleep(3.0)
-    
+
     def find(self, string):
         return self.tree.xpath(string)
 
@@ -48,16 +48,16 @@ class VoteScraper:
     def getMonth(self, mon):
         months = {'Jan':'01','Feb':'02','Mar':'03','Apr':'04','May':'05','Jun':'06','Jul':'07','Aug':'08','Sep':'09','Oct':'10','Nov':'11','Dec':'12'}
         return months[mon[:3]]
-    
+
     def addRoll(self, year, voteNum, issue, question, date, SoH):
         if SoH == 'S':
             vid = year*1000000+voteNum*10+1
         else:
             vid = year*1000000+voteNum*10+0
         #issue = '.'.join(issue.split())
-        #print vid, question
-        self.populator.insertRoll(vid, question, issue)#, date)
-        
+        #print vid, date, question
+        self.populator.insertRoll(vid, question, issue, date)
+
     def addVotes(self, votes, year, voteNum, SoH):
         if SoH == 'S':
             vid = year*1000000+voteNum*10+1
@@ -81,21 +81,21 @@ class VoteScraper:
             #print fname+"--"+lname
             #print vid, votes[voter], fname, lname, state, SoH
             self.populator.insertVote(vid, votes[voter], fname, lname, state, SoH)
-    
+
     def getVotesHouse(self, year, rollNum):
         self.get('http://clerk.house.gov/evs/'+str(year)+'/roll'+str(rollNum).zfill(3)+'.xml')
         try:
             issue = self.find('//legis-num')[0].text
         except:
             return
-        if issue == "JOURNAL": return 
+        if issue == "JOURNAL": return
         if issue is not None: issue = '.'.join(issue.split()).title()
         else: return
         people = self.find('//recorded-vote/legislator')
         vote = self.find('//recorded-vote/vote')
         question = self.find('//vote-question')[0].text
         date = self.find('//action-date')[0].text.split('-')
-        date = date[2]+'-'+self.getMonth(date[1])+'-'+date[0]
+        date = date[2]+'-'+self.getMonth(date[1])+'-'+date[0].zfill(2)
         votes = {}
         for x in range(0, len(people)):
             person = people[x].get('unaccented-name')
@@ -104,7 +104,7 @@ class VoteScraper:
             votes[person] = vote[x].text
         self.addRoll(year, rollNum, issue, question, date, 'H')
         self.addVotes(votes, year, rollNum, 'H')
-        
+
     def getRollHouse(self, year):
         self.fetch('http://clerk.house.gov/evs/'+str(year)+'/index.asp')
         maxRoll = int(self.findElements('xpath', '//table/tbody/tr[2]/td/a')[0].text)
@@ -113,14 +113,14 @@ class VoteScraper:
         totTime = 0
         for roll in range(1, maxRoll+1):
             start = time.time()
-            self.getVotesHouse(year, roll) 
+            self.getVotesHouse(year, roll)
             end = time.time()
             self.current += 1
             totTime += end-start
             avgTime = totTime/(self.current*1.0)
             sys.stdout.write("\rProgress: [\%{0:2.1f}] {1} {2:4.2f}>\r".format(100*self.current/self.max, str(self.current), avgTime))
             sys.stdout.flush()
-        
+
     def getVotesSenate(self, con, sess, vote):
         self.getSpecial("https://www.senate.gov/legislative/LIS/roll_call_votes/vote"+str(con)+str(sess)+"/vote_"+str(con)+"_"+str(sess)+"_"+str(vote).zfill(5)+".xml")
         #self.fetch("https://www.senate.gov/legislative/LIS/roll_call_lists/roll_call_vote_cfm.cfm?congress="+str(con)+"&session="+str(sess)+"&vote="+str(vote).zfill(5))
@@ -136,15 +136,15 @@ class VoteScraper:
             date = self.find('//vote_date')[0].text.split()
         except:
             print etree.tostring(self.tree)
-        date = date[2][:-1]+'-'+getMonth(date[0][:3])+'-'+date[1][:-1]
+        date = date[2][:-1]+'-'+self.getMonth(date[0][:3])+'-'+date[1][:-1].zfill(2)
         #date = date.split()[1][:-1]+'-'+date.split()[0][:3]+'-'+date.split()[2][:-1]
         question = self.find('//vote_question_text')[0].text
         issue = self.find('//document_name')[0]
-        if issue.text is None: 
+        if issue.text is None:
             issue = self.find('//amendment_number')[0]
-            if issue.text is None: 
+            if issue.text is None:
                 issue = ''
-            else: 
+            else:
                 issue = issue.text
         else: issue = issue.text
         if len(issue) > 0: issue = ''.join(issue.split())
@@ -154,12 +154,12 @@ class VoteScraper:
             lname = people[x].xpath('member_full')[0].text
             name = ' '.join(lname.split()[:-1])+", "+fname+" "+lname.split()[-1]
             votes[name] = votes_cast[x].text
-        year = 1901+con+sess 
+        year = 1901+con+sess
         #if len(issue) == 0:
-        #    return 
+        #    return
         self.addRoll(year, vote, issue, question, date, 'S')
         self.addVotes(votes, year, vote, 'S')
-    
+
     def getRollSenate(self, con, sess):
         self.fetch("https://www.senate.gov/legislative/LIS/roll_call_lists/vote_menu_"+str(con)+"_"+str(sess)+".htm")
         vote = self.findElements('xpath', '//div[@id="secondary_col2"]/table/tbody/tr[1]/td[1]/a')
@@ -176,18 +176,18 @@ class VoteScraper:
             sys.stdout.write("\rProgress: [\%{0:2.1f}] {1} {2:4.2f}>\r".format(100*self.current/self.max, str(self.current), avgTime))
             sys.stdout.flush()
 
-    
+
     def printInfo(self, ans):
         for x in ans:
             print(self.getText(x))
-    
+
     def runTest(self):
-        self.getRollSenate(114, 1)
-        self.getRollHouse(2015)
+        self.getRollSenate(114, 2)
+        self.getRollHouse(2016)
 
     def close(self):
         self.driver.quit()
-        
+
 test = VoteScraper()
 run = time.time()
 test.runTest()

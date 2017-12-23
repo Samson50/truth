@@ -31,7 +31,7 @@ class DBPopulate:
             return 0
         except:
             print "getLegID Error: "+fname+" - "+lname+" "+str(sys.exc_info()[0])
-            
+
     def getLegIDCID(self, fname, lname, state, party):
         try:
             argument = ("SELECT LegID FROM Legislator WHERE "
@@ -49,7 +49,7 @@ class DBPopulate:
             return 0
         except:
             print "getLegIDCID Error: "+fname+" - "+lname+" "+str(sys.exc_info()[0])
-            
+
     def getContInfo(self):
         try:
             argument = ("SELECT legID, CID FROM Legislator WHERE NOT isnull(cid);")
@@ -61,7 +61,7 @@ class DBPopulate:
             print "getContInfo Error: "+str(e)
         except:
             print "getContInfo Error: "+str(e)
-            
+
     def getContID(self, cname, t):
         try:
             argument = ("SELECT ContID FROM Contributor WHERE Name=\""+cname+"\";")
@@ -123,7 +123,7 @@ class DBPopulate:
 
     def getLegIDVar(self, fname, lname, state, SoH):
         # Stupid special cases for legislators with mismatched names
-        if fname == "E.": 
+        if fname == "E.":
             fname = ''
             lname = "Bernice Johnson"
         if len(fname) > 0:
@@ -182,11 +182,11 @@ class DBPopulate:
 
 
 
-    def insertLeg(self, fname, lname, party, state, SoH, year, website):
+    def insertLeg(self, fname, lname, party, state, SoH, year, website, pic):
         try:
             argument =   ("INSERT INTO Legislator "
-                                "(FirstName, LastName, Party, State, Job, First, Website)"
-                                "VALUES (\""+fname+"\", \""+lname+"\", \""+party+"\", \""+state+"\", \""+SoH+"\", "+str(year)+", \""+website+"\");"
+                                "(FirstName, LastName, Party, State, Job, First, Website, PicURL)"
+                                "VALUES (\""+fname+"\", \""+lname+"\", \""+party+"\", \""+state+"\", \""+SoH+"\", "+str(year)+", \""+website+"\", \""+pic+"\");"
                         )
             self.cursor.execute(argument)
             self.cnx.commit()
@@ -194,13 +194,13 @@ class DBPopulate:
             print "insertLeg Error: "+fname+" "+lname+" "+str(e)
         except:
             print "insertLeg Error: "+str(sys.exc_info()[0])
-            
+
     def addCID(self, fname, lname, cid, state, party):
         if len(fname) == 1: fname = fname+'.'
         legID = self.getLegIDCID(fname, '%'+lname, state, party)
         if legID == 0:
             legID = self.getLegIDCID(fname, '%'+lname.split()[-1], state, party)
-            if legID == 0: 
+            if legID == 0:
                 legID = self.getLegIDCID("%", '%'+lname, state, party)
                 if legID == 0: legID = self.getLegIDCID("%", '%'+lname.split()[-1], state, party)
         try:
@@ -211,9 +211,9 @@ class DBPopulate:
             print "addCID Error: "+fname+" "+lname+" "+str(e)
         except:
             print "addCID Error: "+fname+" "+lname+": "+str(sys.exc_info()[0])
-            
+
     def getContributor(self, name, t):
-        try: 
+        try:
             argument = ("SELECT ContID FROM Contributor WHERE NAME=\""+name+"\";")
             self.cursor.execute(argument)
             return self.cursor.fetchall()[0][0]
@@ -227,7 +227,7 @@ class DBPopulate:
 
 
     def insertContributor(self, name, t):
-        try: 
+        try:
             argument = ("INSERT INTO Contributor (Name, Type) VALUES (\""+name+"\", "+str(t)+");")
             self.cursor.execute(argument)
             self.cnx.commit()
@@ -236,7 +236,7 @@ class DBPopulate:
         except:
             print "insertContributor Error: "+str(sys.exc_info()[0])
 
-            
+
     def insertContribution(self, legID, contID, amount, nature, cycle):
         try:
             argument =   ("INSERT INTO Money"
@@ -266,13 +266,12 @@ class DBPopulate:
         except:
             print "idk "+str(sys.exc_info()[0])
 
-    def insertBill(self, name, con, fname, lname, summary):#, date):
+    def insertBill(self,billID, name, con, fname, lname, summary, date):
         spon = self.getLegID(fname,lname)
-        #print spon
         try:
             argument = ("INSERT INTO Bill "
-                            "(Name, Congress, Sponsor, Summary)"#, LastDate)"
-                            "VALUES (\""+name+"\", "+str(con)+", "+str(spon)+", \""+summary+"\")")#, "+str(date)+")")
+                            "(BillID, Name, Congress, Sponsor, Summary, LastDate)"
+                            "VALUES ("+str(billID)+", \""+name+"\", "+str(con)+", "+str(spon)+", \""+summary+"\", \""+str(date)+"\");")
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
@@ -349,15 +348,16 @@ class DBPopulate:
         except:
             print "insertBillPolicy Error: "+str(sys.exc_info()[0])
 
-    def insertRoll(self, voteID, question, issue):#, date):
+    def insertRoll(self, voteID, question, issue, date):
+        #TODO: Fix congress formula
         year = voteID/1000000
         con = year-1901 - ((year+1)%2)
         billID = self.getBillID(issue, con)
         if len(question) >= 255: question = question[:255]
         try:
             argument = ("INSERT INTO Roll"
-                        "(VoteNum, Question, Issue)"#, VoteDate)"
-                        "VALUES ("+str(voteID)+", \""+question+"\", "+str(billID)+");")#, "+str(date)+");")
+                        "(VoteNum, Question, Issue, VoteDate)"
+                        "VALUES ("+str(voteID)+", \""+question+"\", "+str(billID)+", \""+str(date)+"\");")
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
