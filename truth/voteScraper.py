@@ -154,7 +154,7 @@ class VoteScraper:
             lname = people[x].xpath('member_full')[0].text
             name = ' '.join(lname.split()[:-1])+", "+fname+" "+lname.split()[-1]
             votes[name] = votes_cast[x].text
-        year = 1901+con+sess
+        year = 1900+con+sess
         #if len(issue) == 0:
         #    return
         self.addRoll(year, vote, issue, question, date, 'S')
