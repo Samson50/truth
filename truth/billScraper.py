@@ -34,10 +34,13 @@ class BillScraper:
         self.initDriver()
 
     def fetch(self, string):
+        """Use Selenium driver to get JavaScript pages"""
         time.sleep(1.4)
         self.driver.get(string)
         self.tree = html.fromstring(self.driver.page_source)
 
+#Obsolete/Not used
+"""
     def findElement(self, code, search):
         try:
             element_presence = EC.presence_of_element_located((By.XPATH, search))#.join(search.split('/')[:-1])))
@@ -51,17 +54,16 @@ class BillScraper:
             return self.driver.find_elements(code, search)
         except TimeoutException:
             print 'Loading took too much time!'
-
-    def get(self, string):
-        page = requests.get(string)#, header)
+"""
+    def get(self, url_string):
+        """Use python.requests to get pure HTML Pages"""
+        page = requests.get(url_string)#, header)
         self.tree = html.fromstring(page.content)
         time.sleep(1.2)
 
     def find(self, string):
+        """Parse XML Tree for *string* by XPath"""
         return self.tree.xpath(string)
-
-    def getText(self, elem):
-        return ''.join(elem.get_property('textContent').strip('[]').split(','))
 
     def getAction(self, billID):
         actions = self.find('//div[@id="allActions-content"]/div/table/tbody/tr/td') # AllActions (date and action, drop 'Action By:'
