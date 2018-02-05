@@ -4,7 +4,7 @@ from lxml import html
 from lxml.etree import tostring
 ans = requests.get("http://www.opensecrets.org/members-of-congress/summary?cid=N00032019&cycle=2018&type=C")
 #print ans.content
-tree = html.fromstring(ans.content) 
+tree = html.fromstring(ans.content)
 #bill = '.'.join(tree.xpath("//body")[0].text.split())
 print tostring(tree)
 #people = tree.xpath('//members/member')
@@ -12,7 +12,7 @@ print tostring(tree)
 #date = tree.xpath('//vote_date')[0].text
 #question = tree.xpath('//vote_question_text')[0].text
 #issue = tree.xpath('//document_name')
-#if len(issue): 
+#if len(issue):
 #    issue = tree.xpath('//amendment_number')[0].text
 #print date
 #print question
@@ -22,7 +22,7 @@ print tostring(tree)
 #print tostring(tree)
 
 """
-import os, sys 
+import os, sys
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium import webdriver
 import requests
@@ -52,10 +52,10 @@ for box in boxes:
                 print d.text#.split()[1].split('-')[0]
                 #d.text.split()[1].split('-')[0]
         else:
-            print da[0].text.strip()[:-1] 
+            print da[0].text.strip()[:-1]
             print da[1].text.strip()
         #print html.tostring(da)[:100].strip()
         print "*"
-        
+
 print "End"
 """
