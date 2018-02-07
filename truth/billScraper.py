@@ -10,7 +10,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
-from dbPopulate import DBPopulate
+#from dbPopulate import DBPopulate
 
 def sanitize(text):
     if '"' in text:
@@ -21,7 +21,7 @@ def sanitize(text):
 class BillScraper:
     def __init__(self, firstCon):
         self.firstCongress = firstCon
-        self.populator = DBPopulate()
+        #self.populator = DBPopulate()
         self.initDriver()
         self.testing = False
         self.maxBill = 0
@@ -39,22 +39,6 @@ class BillScraper:
         self.driver.get(string)
         self.tree = html.fromstring(self.driver.page_source)
 
-#Obsolete/Not used
-"""
-    def findElement(self, code, search):
-        try:
-            element_presence = EC.presence_of_element_located((By.XPATH, search))#.join(search.split('/')[:-1])))
-            WebDriverWait(self.driver, 3).until(element_presence)
-            return self.driver.find_elements(code, search)
-        except TimeoutException:
-            print 'Loading took too much time!'
-
-    def findElements(self, code, search):
-        try:
-            return self.driver.find_elements(code, search)
-        except TimeoutException:
-            print 'Loading took too much time!'
-"""
     def get(self, url_string):
         """Use python.requests to get pure HTML Pages"""
         page = requests.get(url_string)#, header)
@@ -141,7 +125,7 @@ class BillScraper:
         if (con%10 == 3): return str(con)+"rd"
         else: return str(con)+"th"
 
-    def getCongressFile2(self, fcon, lcon):
+    def getCongressFile(self, fcon, lcon):
         t_index = {0:'bill',1:'amendment',2:'resolution',3:'concurrent-resolution',4:'joint-resolution'}
         i = 0
         totTime = 0.0
@@ -169,7 +153,7 @@ class BillScraper:
                             n = 34
                             currentBill = n*1.0
                         start = time.time()
-                        self.billFromLink2("https://www.congress.gov/"+billType+"/"+self.getConth(fcon+i)+"-congress/"+t+"/"+str(n)+"/all-info",fcon+i,billID+n)
+                        self.billFromLink("https://www.congress.gov/"+billType+"/"+self.getConth(fcon+i)+"-congress/"+t+"/"+str(n)+"/all-info",fcon+i,billID+n)
                         end = time.time()
                         currentBill += 1
                         totTime += end-start
@@ -180,7 +164,7 @@ class BillScraper:
                     self.tdex += 1
                 i += 1
 
-    def billFromLink2(self, billLink, conNum, billID):#Takes simple link to bill
+    def billFromLink(self, billLink, conNum, billID):#Takes simple link to bill
         self.fetch(billLink)
         #print billLink
         billName = self.getType(billLink.split('/')[5])+billLink.split('/')[6]
@@ -216,9 +200,9 @@ class BillScraper:
             #print billID, billName, fname, lname, latest
             #print title
             if sponsor == '' and latest == '': return
-            self.populator.insertBill(billID, billName, conNum, fname, lname, title, latest)
+            #self.populator.insertBill(billID, billName, conNum, fname, lname, title, latest)
             #billID = self.populator.getBillID(billName, conNum)
-            self.getBillDetails(billID, conNum)
+            #self.getBillDetails(billID, conNum)
         except UnboundLocalError as e:
             print "Bill: "+billLink+" Error: "+str(e)
 
@@ -263,7 +247,7 @@ class BillScraper:
 
 
     def runTest(self):
-        self.getCongressFile2(114,114)
+        self.getMaxes(114,114)
 
     def close(self):
         self.driver.quit()
