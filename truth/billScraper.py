@@ -49,43 +49,68 @@ class BillScraper:
         """Parse XML Tree for *string* by XPath"""
         return self.tree.xpath(string)
 
-    def getAction(self, billID):
-        actions = self.find('//div[@id="allActions-content"]/div/table/tbody/tr/td') # AllActions (date and action, drop 'Action By:'
-        if len(actions) >= 2:
+    def getAction(self, chamber):
+        actions = self.find('//div[@id="allActions-content"]/div/table/tbody/tr') # AllActions (date and action, drop 'Action By:'
+        retActs = []
+        for action in actions:
+            acts = action.xpath.('td')
+            date = acts[0].text.split("/")
+            date = date[2][:4]+"-"+date[0]+"-"+date[1]
+            if (len(acts) == 3):
+                action = acts[1].text[0]+" - "+acts[2].text
+                actBy = acts[2].xpath("span")[0].text
+                if actBy is None: actBy = ""
+            else:
+                action = chamber+" - "+acts[1].text
+                actBy = acts[1].xpath("span")[0].text
+                if actBy is None: actBy = ""
+            retActs += [date,action,actBy]
+        """
+        if len(actions) >= 2:#TODO: What does this prevent?
             if actions[1].text == 'Senate' or actions[1].text == 'House' or actions[1].text is None:
                 for act in range(0, len(actions)/3):
                     date = actions[act*3].text
-                    actBy = actions[act*3+1].text
-                    if actBy is not None: actBy = actBy.split()[0]
-                    else: actBy = ''
-                    action = sanitize(actions[act*3+2].text.strip())
+                    cbr = actions[act*3+1].text
+                    if cbr is not None: cbr = cbr.split()[0]
+                    else: cbr = chamber
+                    actBy = actions[act*3+2].xpath("span").text
+                    if actBy is None: actBy = ""
+                    action = cbr+" - "+sanitize(actions[act*3+2].text.strip())
                     if len(action) >= 255: action = action[:255]
-                    self.populator.insertAction(billID,date,action,actBy)
+                    retActs += [date,action,actBy]
             else:
                 for act in range(0,len(actions)/2):
                     date = actions[act*2].text
-                    action = sanitize(actions[act*2+1].text.split('\n')[0])
+                    action = chamber+" - "+sanitize(actions[act*2+1].text.split('\n')[0])
                     if len(action) >= 255: action = action[:255]
-                    if (actions[act*2+1].text.strip().split('\n')) == 2:
-                        actBy = actions[act*2+1].text.split('\n')[1].strip()
-                    else: actBy = ''
-                    self.populator.insertAction(billID,date,action,actBy)
+                    actBy = actions[act*3+2].xpath("span").text
+                    if actBy is None: actBy = ""
+                    retActs += [date,action,actBy]
+        """
+        return retActs
 
     def getCosponsor(self, billID):
         cospons = self.find('//div[@id="cosponsors-content"]/div/table[1]/tbody/tr/td/a') # Cosponsors
+        retCospons = []
         if "Cosponsors Who Withdrew" in cospons:
             stopper = cospons.index("Cosponsors Who Withdrew")
             cospons = cospons[:stopper]
         for spon in cospons:
             leg = spon.text[5:].split(' [')[0]
+            #leg = " ".join(leg.split(', ')[::-1])
             leg = leg.split(', ')[1]+" "+leg.split(', ')[0]
             fname = leg.split()[0]
             lname = sanitize(' '.join(leg.split()[1:]))
-            self.populator.insertCosponsor(fname, lname, billID)
+            ps = spon.text.split('[')[1].split('-')[0:1]
+            retCospons += [fname, lname, ps[0], ps[1]]
+            #self.populator.insertCosponsor(fname, lname, billID)
+        return retCosponsors
 
     def getCommittees(self, billID):
         committees = self.find('//div[@id="committees-content"]/div/div/table/tbody/tr[@class="committee"]/th') # Committees
-        for comm in committees:#TODO: Deal with ()
+        return [x.text for x in committees]
+        """
+        for comm in committees:#TODO: include House and Senate in committees
             comm = comm.text
             if 'House ' in comm:
                 comm = comm[6:]
@@ -94,13 +119,14 @@ class BillScraper:
             if '(' in comm:
                 comm = comm.split(' (')[0]
             self.populator.insertComboBill(billID, comm.strip())
+        """
 
     def getBillDetails(self, billID, conNum):
         realatedBills = self.find('//div[@id="relatedBills-content"]/div/div/table/tbody/tr/td[1]/a') # RelatedBills
         subjects = self.find('//div[@id="subjects-content"]/div/ul/li/a') # Policy Area
-        self.getAction(billID)
-        self.getCosponsor(billID)
-        self.getCommittees(billID)
+        actions = self.getAction(chamber)
+        cosponsors = self.getCosponsor()
+        committees = self.getCommittees()
         for bill in realatedBills:
             self.populator.insertRelatedBill(billID, bill.text.strip())
         for subject in subjects:
@@ -166,21 +192,14 @@ class BillScraper:
 
     def billFromLink(self, billLink, conNum, billID):#Takes simple link to bill
         self.fetch(billLink)
-        #print billLink
         billName = self.getType(billLink.split('/')[5])+billLink.split('/')[6]
-        latest = ''
         fname = ''
         lname = ''
         title = ''
         headers = self.find('//div[@id="content"]/div/div/div[@class="overview"]/table/tbody/tr')
         for head in headers:
             h = head.xpath('th')[0].text
-            if 'Latest Action' in h:
-                latest = head.xpath('td')[0].text[:60]
-                if ' - ' in latest: latest = latest.split()[2].split('/')
-                else: latest = latest.split()[0].split('/')
-                latest = '-'.join([latest[2],latest[0],latest[1]])
-            elif 'Sponsor' in h:
+            if 'Sponsor' in h:
                 try:
                     sponsor = head.xpath('td/a')[0].text[5:].split(' [')[0]
                 except:
@@ -197,12 +216,12 @@ class BillScraper:
         try:
             title = sanitize(title.strip())
             if len(title) >= 255: title = title[0:253]
-            #print billID, billName, fname, lname, latest
+            #print billID, billName, fname, lname
             #print title
             if sponsor == '' and latest == '': return
-            #self.populator.insertBill(billID, billName, conNum, fname, lname, title, latest)
+            #self.populator.insertBill(billID, billName, conNum, fname, lname, title)
             #billID = self.populator.getBillID(billName, conNum)
-            #self.getBillDetails(billID, conNum)
+            #self.getBillDetails(billName[0], conNum)
         except UnboundLocalError as e:
             print "Bill: "+billLink+" Error: "+str(e)
 

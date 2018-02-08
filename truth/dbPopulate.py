@@ -294,8 +294,8 @@ class DBPopulate:
 
     def insertAction(self, BillID, date, action, actBy):
         if len(action) > 255: action = action[0:255]
-        if '-' in date: date = date.split('-')[0]
-        actDate = date.split('/')[2]+'-'+date.split('/')[0]+'-'+date.split('/')[1]
+        #if '-' in date: date = date.split('-')[0]
+        #actDate = date.split('/')[2]+'-'+date.split('/')[0]+'-'+date.split('/')[1]
         try:
             argument = ("INSERT INTO Action (ActionDate, ActionBy, BillID, ActionStr)"
                                 "VALUES (\""+actDate+"\", \""+actBy+"\", "+str(BillID)+", \""+action+"\");")
