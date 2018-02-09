@@ -1,12 +1,12 @@
-import requests
+#import requests
 
-from lxml import html
-from lxml.etree import tostring
-ans = requests.get("http://www.opensecrets.org/members-of-congress/summary?cid=N00032019&cycle=2018&type=C")
+#from lxml import html
+#from lxml.etree import tostring
+#ans = requests.get("http://www.opensecrets.org/members-of-congress/summary?cid=N00032019&cycle=2018&type=C")
 #print ans.content
-tree = html.fromstring(ans.content)
+#tree = html.fromstring(ans.content)
 #bill = '.'.join(tree.xpath("//body")[0].text.split())
-print tostring(tree)
+#print tostring(tree)
 #people = tree.xpath('//members/member')
 #votes = tree.xpath('//members/member/vote_cast')
 #date = tree.xpath('//vote_date')[0].text
@@ -21,7 +21,7 @@ print tostring(tree)
 #print votes[0].text#tostring(votes[0])
 #print tostring(tree)
 
-"""
+
 import os, sys
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium import webdriver
@@ -34,12 +34,13 @@ from lxml import html
 #driver = webdriver.Firefox(firefox_binary=binary)
 driver = webdriver.PhantomJS()
 
-#driver.get('https://www.congress.gov/bill/115th-congress/senate-bill/2021/all-info')
-#print driver.page_source
+driver.get('https://www.congress.gov/bill/115th-congress/senate-bill/2021/all-info')
+print html.tostring(html.fromstring(driver.page_source))
 
-driver.get('https://www.congress.gov/members?q=%7B%22congress%22%3A%22115%22%7D')
-tree = html.fromstring(driver.page_source)
+#driver.get('https://www.congress.gov/members?q=%7B%22congress%22%3A%22115%22%7D')
+#tree = html.fromstring(driver.page_source)
 
+"""
 print "Start"
 
 boxes = tree.xpath('//li[@class="expanded"]//div[@class="quick-search-member"]')
@@ -58,4 +59,5 @@ for box in boxes:
         print "*"
 
 print "End"
+
 """
