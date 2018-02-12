@@ -401,7 +401,9 @@ class DBPopulate:
         """Updates relational table for each bill to their latest action"""
         print "working"
 
-
+    def updateActions(self):
+        """Update the actions for bills"""
+        print "working"
 
     def deleteItem(self, table, cond, itemNo):
         try:
