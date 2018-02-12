@@ -36,6 +36,20 @@ class DBManager:
         except:
             print "idk "+str(sys.exc_info()[0])
 
+    def createLatest(self):
+        try latest_table = ("CREATE TABLE Latest ("
+                                "LatestID BIGINT Primary Key,"
+                                "BillID int,"
+                                "LatestDate DATE"
+                                ");"
+                            )
+            self.cursor.execute(latest_table)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print e
+        except:
+            print "Some Error: "+str(sys.exec_info()[0])
+
     def createMoney(self):
         try:
             money_table =   ("CREATE TABLE Money ("
@@ -109,7 +123,7 @@ class DBManager:
                                 "Name char(20),"
                                 "Congress int,"
                                 "Sponsor int," # References LegID
-                                "LastDate DATE,"
+                                #"LastDate DATE,"
                                 "Summary char(255)"
                                 #"FullText TEXT" #MAX: 9457090 MED 16,777,215
                                 #"FullText ???"

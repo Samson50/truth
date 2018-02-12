@@ -91,6 +91,7 @@ class DBPopulate:
         except mysql.connector.errors.ProgrammingError as e:
             print committee+" "+e
         except exceptions.IndexError as e:
+            #TODO: Committee not found, insert committee
             print "getComID Error for Com: "+committee+": "+str(e)
             return 0
         except:
@@ -117,6 +118,7 @@ class DBPopulate:
         except mysql.connector.errors.ProgrammingError as e:
             print "getPolicyID Error for: "+pname+": "+str(e)
         except exceptions.IndexError as e:
+            #TODO: PolicyArea not found, insert Policy Area
             print e
         except:
             print "idk "+str(sys.exc_info()[0])
@@ -270,8 +272,8 @@ class DBPopulate:
         spon = self.getLegID(fname,lname)
         try:
             argument = ("INSERT INTO Bill "
-                            "(BillID, Name, Congress, Sponsor, Summary, LastDate)"
-                            "VALUES ("+str(billID)+", \""+name+"\", "+str(con)+", "+str(spon)+", \""+summary+"\", \""+str(date)+"\");")
+                            "(BillID, Name, Congress, Sponsor, Summary)"#", LastDate)"
+                            "VALUES ("+str(billID)+", \""+name+"\", "+str(con)+", "+str(spon)+", \""+summary+"\");"#", \""+str(date)+"\");")
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
@@ -305,6 +307,18 @@ class DBPopulate:
             print "Action error for Bill: "+str(BillID)+" "+str(e)
         except:
             print "Action error: "+str(sys.exc_info()[0])
+
+    def insertLatest(self, BillID, Date):
+        latestID = int("".join(Date.split("-")))*100000+(int(BillID)%100000)
+        try:
+            argument = ("INSERT INTO Latest (LatestID, BillID, LatestDate)"
+                            "VALUES ("+latestID+","+BillID+",\""+Date+"\");")
+            self.cursor.execute(argument)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print "Latest Action error for: "+str(BillID)+" Date: "+Date
+        except:
+            print "Latest Action Error: "+str(sys.exc_info()[0])
 
     def insertComboBill(self, BillID, commName):
         ComID = self.getComID(commName)
@@ -382,6 +396,11 @@ class DBPopulate:
             print "insertVote Error: "+str(e)
         except:
             print "insertVote Error: "+str(sys.exc_info()[0])
+
+    def updateLatest(self):
+        """Updates relational table for each bill to their latest action"""
+        print "working"
+
 
 
     def deleteItem(self, table, cond, itemNo):
