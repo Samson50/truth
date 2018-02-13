@@ -21,21 +21,24 @@
 #print votes[0].text#tostring(votes[0])
 #print tostring(tree)
 
+from webDriver import Driver
+driver = Driver()
+driver.get('https://www.congress.gov/bill/115th-congress/senate-bill/2021/all-info')
+print driver.printTree()
+#import os, sys
+#from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
+#from selenium import webdriver
+#import requests
 
-import os, sys
-from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
-from selenium import webdriver
-import requests
-
-from lxml import html
+#from lxml import html
 
 #os.environ['MOZ_HEADLESS'] = '1'
 #binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
 #driver = webdriver.Firefox(firefox_binary=binary)
-driver = webdriver.PhantomJS()
+#driver = webdriver.PhantomJS()
 
-driver.get('https://www.congress.gov/bill/115th-congress/senate-bill/2021/all-info')
-print html.tostring(html.fromstring(driver.page_source))
+#driver.get('https://www.congress.gov/bill/115th-congress/senate-bill/2021/all-info')
+#print html.tostring(html.fromstring(driver.page_source))
 
 #driver.get('https://www.congress.gov/members?q=%7B%22congress%22%3A%22115%22%7D')
 #tree = html.fromstring(driver.page_source)
