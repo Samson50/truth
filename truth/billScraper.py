@@ -1,15 +1,9 @@
 import sys
 import time
-import requests
 import csv
 
 from random import randint
-from lxml import html
-from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
+from webDriver import Driver
 #from dbPopulate import DBPopulate
 
 def sanitize(text):
@@ -22,38 +16,14 @@ class BillScraper:
     def __init__(self, firstCon):
         self.firstCongress = firstCon
         #self.populator = DBPopulate()
-        self.initDriver()
+        self.driver = Driver() 
         self.testing = False
         self.maxBill = 0
-
-    def initDriver(self):
-        #TODO get new driver (PhantomJS depriciated)
-        self.driver = webdriver.PhantomJS()
-
-    def restartDriver(self):
-        self.driver.quit()
-        self.initDriver()
-
-    def fetch(self, string):
-        """Use Selenium driver to get JavaScript pages"""
-        time.sleep(1.4)
-        self.driver.get(string)
-        self.tree = html.fromstring(self.driver.page_source)
-
-    def get(self, url_string):
-        """Use python.requests to get pure HTML Pages"""
-        page = requests.get(url_string)#, header)
-        self.tree = html.fromstring(page.content)
-        time.sleep(1.2)
-
-    def find(self, string):
-        """Parse XML Tree for *string* by XPath"""
-        return self.tree.xpath(string)
 
     def getAction(self, chamber):
         """Returns a list of actions for the bill"""
         """Most recent action at index 0"""
-        actions = self.find('//div[@id="allActions-content"]/table/tbody/tr') # AllActions (date and action, drop 'Action By:'
+        actions = self.driver.find('//div[@id="allActions-content"]/table/tbody/tr') # AllActions (date and action, drop 'Action By:'
         retActs = []
         for action in actions:
             acts = action.xpath('td')
@@ -74,7 +44,7 @@ class BillScraper:
         return retActs
 
     def getCosponsor(self):
-        cospons = self.find('//div[@id="cosponsors-content"]/div/table[1]/tbody/tr/td/a') # Cosponsors
+        cospons = self.driver.find('//div[@id="cosponsors-content"]/div/table[1]/tbody/tr/td/a') # Cosponsors
         # Cosponsored date  = ...tbody/tr/td[2]
         retCospons = []
         if "Cosponsors Who Withdrew" in cospons:
@@ -92,12 +62,12 @@ class BillScraper:
         return retCospons
 
     def getCommittees(self):
-        committees = self.find('//div[@id="committees-content"]/div/div/table/tbody/tr[@class="committee"]/th') # Committees
+        committees = self.driver.find('//div[@id="committees-content"]/div/div/table/tbody/tr[@class="committee"]/th') # Committees
         return [x.text for x in committees]
 
     def getBillDetails(self, billID, chamber, conNum):
-        realatedBills = self.find('//div[@id="relatedBills-content"]/div/div/table/tbody/tr/td[1]/a') # RelatedBills
-        subjects = self.find('//div[@id="subjects-content"]/div/ul/li/a') # Policy Area
+        realatedBills = self.driver.find('//div[@id="relatedBills-content"]/div/div/table/tbody/tr/td[1]/a') # RelatedBills
+        subjects = self.driver.find('//div[@id="subjects-content"]/div/ul/li/a') # Policy Area
         actions = self.getAction(chamber)
         cosponsors = self.getCosponsor()
         committees = self.getCommittees()
@@ -129,12 +99,12 @@ class BillScraper:
         else: print("Can't find type for :"+bid)
 
     def billFromLink(self, billLink, conNum, billID):#Takes simple link to bill
-        self.fetch(billLink)
+        self.driver.fetch(billLink)
         billName = self.getType(billLink.split('/')[5])+billLink.split('/')[6]
         fname = ''
         lname = ''
         title = ''
-        headers = self.find('//div[@class="featured"]/div/div[@class="overview"]/table/tbody/tr')
+        headers = self.driver.find('//div[@class="featured"]/div/div[@class="overview"]/table/tbody/tr')
         for head in headers:
             h = head.xpath('th')[0].text
             if 'Sponsor' in h:
@@ -147,9 +117,9 @@ class BillScraper:
                 fname = name.split()[0]
                 lname = sanitize(' '.join(name.split()[1:]))
         try:
-            title = self.find('//div[@id="titles_main"]/div/div/div/p')[0].text
+            title = self.driver.find('//div[@id="titles_main"]/div/div/div/p')[0].text
         except:
-            try: title = self.find('//div[@id="content"]/div[@id="main"]/p')[0].text
+            try: title = self.driver.find('//div[@id="content"]/div[@id="main"]/p')[0].text
             except: return
         try:
             title = sanitize(title.strip())
@@ -213,9 +183,9 @@ class BillScraper:
         else: chamber = 'Senate'
         search = 'https://www.congress.gov/search?q=%7B%22source%22%3A%22legislation%22%2C%22congress%22%3A%5B%22'+str(congNum)+'%22%5D%2C%22chamber%22%3A%22'+chamber+'%22%2C%22type%22%3A%22'+t+'%22%7D'
         if self.testing: print search
-        self.fetch(search)
+        self.driver.fetch(search)
         try:
-            ans = int(self.find('//div[@id="main"]/ol/li/span/a')[0].text.split('.')[-1])
+            ans = int(self.driver.find('//div[@id="main"]/ol/li/span/a')[0].text.split('.')[-1])
         except:
             ans = 0
         return ans

@@ -2,14 +2,7 @@ import time
 from dbPopulate import DBPopulate
 import requests
 
-from lxml import html
-from lxml.etree import tostring
-from fake_useragent import UserAgent
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from selenium import webdriver
+from webDriver import Driver
 #107.134.155.108
 class CongressScraper:
     def __init__(self):
@@ -29,51 +22,15 @@ class CongressScraper:
                           'WISCONSIN':'WI','WYOMING':'WY','NORTHERN MARIANA ISLANDS':'MP','GUAM':'GU','PUERTO RICO':'PR',
                           'VIRGIN ISLANDS':'VI','AMERICAN SAMOA':'AS','DISTRICT OF COLUMBIA':'DC','PALAU':'PW',
                           'FEDERATED STATES OF MICRONESIA':'FM','MARSHALL ISLANDS':'MH'}
-        self.initDriver()
+        self.driver = Driver()
 
-    def initDriver(self):
-        self.driver = webdriver.PhantomJS()
-
-    def restartDriver(self):
-        self.driver.quit()
-        self.initDriver()
-
-    def get(self, string):
-        if self.testing: print "Getting: "+string
-        page = requests.get(string)
-        self.tree = html.fromstring(page.content)
-        time.sleep(2)
-        #requests.exceptions.Timeout
-        #request.get("str", timeout=10)
-
-    def find(self, string):
-        return self.tree.xpath(string)
-
-    def fetch(self, string):
-        print "Fetching: " +string
-        self.driver.get(string)
-        time.sleep(1.4)
-        self.tree = html.fromstring(self.driver.page_source)
-        '''
-        if self.testing: print "Retrieving: "+string
-        self.driver.get(string)
-        '''
-
-    def findElements(self, code, search):
-        if self.testing: print "Finding "+search
-        try:
-            element_presence = EC.presence_of_element_located((By.XPATH, search))
-            WebDriverWait(self.driver, 5).until(element_presence)
-            return self.driver.find_elements(code, search)
-        except TimeoutException:
-            print 'Loading took too much time!'
 
     def addCID(self):
         self.fetch("https://www.opensecrets.org/members-of-congress/members-list?cong_no=115&cycle=2018")
         for p in range(0,11):
-            persons = self.findElements('xpath', '//table[@id="DataTables_Table_0"]/tbody/tr/td/a')
-            states = self.findElements('xpath', '//table[@id="DataTables_Table_0"]/tbody/tr/td[2]')
-            parties = self.findElements('xpath', '//table[@id="DataTables_Table_0"]/tbody/tr/td[3]')
+            persons = self.driver.find('//table[@id="DataTables_Table_0"]/tbody/tr/td/a')
+            states = self.driver.find('//table[@id="DataTables_Table_0"]/tbody/tr/td[2]')
+            parties = self.driver.find('//table[@id="DataTables_Table_0"]/tbody/tr/td[3]')
             for p in range(len(persons)):
                 cid = int(persons[p].get_attribute('href').split('=')[1][1:].split('&')[0])
                 name = persons[p].text.strip()
@@ -85,12 +42,12 @@ class CongressScraper:
                 state = self.stateDict[states[p].text.strip().upper()]
                 party = parties[p].text.strip()
                 self.populator.addCID(fname, lname, cid, state, party)
-            button = self.findElements('xpath', '//div[@id="DataTables_Table_0_paginate"]/a[2]')[0]
+            button = self.driver.find('//div[@id="DataTables_Table_0_paginate"]/a[2]')[0]
             button.click()
 
     def addCommittee(self):
         self.fetch('http://clerk.house.gov/committee_info/oal.aspx')
-        committees = self.findElements('xpath','//div/table/tbody/tr/td')#[0].text.split('\n')
+        committees = self.driver.find('//div/table/tbody/tr/td')#[0].text.split('\n')
         for c in range(0, len(committees)/2):
             names = committees[c*2].text.split(', ')
             fname = names[1]
@@ -137,9 +94,9 @@ class CongressScraper:
 
     def scrapePage(self, target):
         #TODO: Finish this implementation
-        self.fetch(target)
+        self.driver.fetch(target)
         #names = self.find('//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/span/a')
-        people = self.find('//li[@class="expanded"]')#//div[@class="quick-search-member"]')
+        people = self.driver.find('//li[@class="expanded"]')#//div[@class="quick-search-member"]')
         #links = [link.attrib['href'] for link in names]
         #names = [name.text for name in names]
         #names = [name.split(', ')[1]+' '+ ' '.join(name.split(', ')[0].split()[1:]) for name in names]
@@ -201,11 +158,11 @@ class CongressScraper:
         print "Legilator table populated"
 
     def getContributors(self, legID, cid, cycle): #padd cid string as necessary
-        self.fetch("https://www.opensecrets.org/members-of-congress/summary?cid=N"+str(cid).zfill(8)+"&cycle="+str(cycle)+"&type=C")
+        self.driver.fetch("https://www.opensecrets.org/members-of-congress/summary?cid=N"+str(cid).zfill(8)+"&cycle="+str(cycle)+"&type=C")
         #print "Tree"
         #print tostring(self.tree)
-        individuals = self.find("//body/div/div/div/div/div/div[3]/div[2]/table/tbody/tr") #top indiv
-        industries = self.find("//body/div/div/div/div/div/div[3]/div[4]/table/tbody/tr") #top indus
+        individuals = self.driver.find("//body/div/div/div/div/div/div[3]/div[2]/table/tbody/tr") #top indiv
+        industries = self.driver.find("//body/div/div/div/div/div/div[3]/div[4]/table/tbody/tr") #top indus
         for x in range(0,len(individuals)):
             individual = individuals[x].xpath('td')
             #print individual[0].text

@@ -1,9 +1,11 @@
 import requests
 import time
+import os
 
 from lxml import html
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
@@ -14,6 +16,8 @@ class Driver:
         self.initDriver()
 
     def initDriver(self):
+        #os.environ['MOZ_HEADLESS'] = '1'
+        #binary = FirefoxBinary('C:\\Program Files\\Python27\\')
         options = Options()
         options.add_argument("--headless")
         self.driver = webdriver.Firefox(firefox_options=options)
@@ -41,3 +45,6 @@ class Driver:
     def printTree(self):
         """Prints current tree"""
         return html.tostring(self.tree)
+
+    def quit(self):
+        self.driver.quit()
