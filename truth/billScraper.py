@@ -4,9 +4,9 @@ import csv
 
 from random import randint
 from webDriver import Driver
-#from dbPopulate import DBPopulate
+from dbPopulate import DBPopulate
 
-def sanitize(text): 
+def sanitize(text):
     if '"' in text:
         text = ''.join(text.split('"'))
     return text
@@ -16,7 +16,7 @@ class BillScraper:
     def __init__(self, firstCon):
         self.firstCongress = firstCon
         #self.populator = DBPopulate()
-        self.driver = Driver() 
+        self.driver = Driver()
         self.testing = False
         self.maxBill = 0
 
@@ -71,8 +71,6 @@ class BillScraper:
         actions = self.getAction(chamber)
         cosponsors = self.getCosponsor()
         committees = self.getCommittees()
-        print cosponsors
-        print committees
         #self.populator.insertLatest(billID, actions[0][0])
         #for bill in realatedBills:
         #    self.populator.insertRelatedBill(billID, bill.text.strip())
@@ -219,7 +217,7 @@ class BillScraper:
 
 
     def runTest(self):
-        self.getCongressFile(114,114)
+        self.getMaxes(104,115)
 
     def close(self):
         self.driver.quit()

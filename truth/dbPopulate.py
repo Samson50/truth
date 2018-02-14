@@ -273,7 +273,7 @@ class DBPopulate:
         try:
             argument = ("INSERT INTO Bill "
                             "(BillID, Name, Congress, Sponsor, Summary)"#", LastDate)"
-                            "VALUES ("+str(billID)+", \""+name+"\", "+str(con)+", "+str(spon)+", \""+summary+"\");"#", \""+str(date)+"\");")
+                            "VALUES ("+str(billID)+", \""+name+"\", "+str(con)+", "+str(spon)+", \""+summary+"\");")#", \""+str(date)+"\");")
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
