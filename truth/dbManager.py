@@ -5,6 +5,7 @@ class DBManager:
     def __init__(self):
         self.cnx = mysql.connector.connect(user='bob', password='bobwhite', host='localhost', database='federal')
         self.cursor = self.cnx.cursor()
+        #TODO: Dynamically populate committees
         self.committees = ['Ways and Means','Judiciary','Energy and Commerce','Education and the Workforce','Natural Resources','Foreign Affairs','Transportation and Infrastructure','Financial Services','Oversight and Government Reform','Post Office and Civil Service','Rules','Armed Services','Agriculture','Veterans\' Affairs','Administration','Science, Space, and Technology','Merchant Marine and Fisheries','Appropriations','Small Business','Budget','Homeland Security','District of Columbia','Intelligence (Permanent)','Ethics','Joint Atomic Energy','Internal Security','Committees','Outer Continental Shelf','Energy (Ad Hoc)','Joint Deficit Reduction','Finance','Judiciary','Energy and Natural Resources','Health, Education, Labor, and Pensions','Commerce, Science, and Transportation','Homeland Security and Governmental Affairs','Environment and Public Works','Foreign Relations','Banking, Housing, and Urban Affairs','Agriculture, Nutrition, and Forestry','Rules and Administration','Armed Services','Indian Affairs','Budget','Appropriations','Small Business and Entrepreneurship','Post Office and Civil Service','Intelligence','District of Columbia','Aeronautical','Aging','Ethics','Senate Narcotics Caucus','Joint Deficit Reduction','Impeachment','Official Conduct','POW/MIA Affairs','Whitewater','Joint Economic','Joint Library','Joint Printing','Joint Taxation','Democratic Whip','Majority Whip','Assistant Democratic Leader','Majority Leader','Democratic Leader','The Speaker','International Relations','Government Reform','Resources','Science','Governmental Affairs','Permanent Select Committee on Intelligence']
         self.policyAreas = ['Agriculture and Food','Animals','Armed Forces and National Security','Arts, Culture, Religion','Civil Rights and Liberties, Minority Issues',
                             'Commerce','Congress','Crime and Law Enforcement','Economics and Public Finance','Education','Emergency Management','Energy','Environmental Protection',
@@ -34,6 +35,20 @@ class DBManager:
             print e
         except:
             print "idk "+str(sys.exc_info()[0])
+
+    def createLatest(self):
+        try latest_table = ("CREATE TABLE Latest ("
+                                "LatestID BIGINT Primary Key,"
+                                "BillID int,"
+                                "LatestDate DATE"
+                                ");"
+                            )
+            self.cursor.execute(latest_table)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print e
+        except:
+            print "Some Error: "+str(sys.exec_info()[0])
 
     def createMoney(self):
         try:
@@ -108,7 +123,7 @@ class DBManager:
                                 "Name char(20),"
                                 "Congress int,"
                                 "Sponsor int," # References LegID
-                                "LastDate DATE,"
+                                #"LastDate DATE,"
                                 "Summary char(255)"
                                 #"FullText TEXT" #MAX: 9457090 MED 16,777,215
                                 #"FullText ???"
