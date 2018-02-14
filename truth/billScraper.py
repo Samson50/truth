@@ -12,7 +12,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from dbPopulate import DBPopulate
 
-def sanitize(text):
+def sanitize(text): 
     if '"' in text:
         text = ''.join(text.split('"'))
     return text
