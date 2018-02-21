@@ -4,7 +4,7 @@ import exceptions
 
 class DBPopulate:
     def __init__(self):
-        self.cnx = mysql.connector.connect(user='bob', password='bobwhite', host='localhost', database='federal')
+        self.cnx = mysql.connector.connect(user='root', password='bobwhite', host='localhost', database='federal')
         self.cursor = self.cnx.cursor()
 
     def getFirstYear(self):
@@ -91,9 +91,14 @@ class DBPopulate:
         except mysql.connector.errors.ProgrammingError as e:
             print committee+" "+e
         except exceptions.IndexError as e:
-            #TODO: Committee not found, insert committee
-            print "getComID Error for Com: "+committee+": "+str(e)
-            return 0
+            self.insertCommittee(committee)
+            try:
+                argument = ("SELECT ComID FROM Committee WHERE ComName=\""+committee+"\";")
+                self.cursor.execute(argument)
+                return self.cursor.fetchall()[0][0]
+            except:
+                print "getComID Error: "+committee
+                return 0
         except:
             print "idk "+str(sys.exc_info()[0])
 
@@ -199,6 +204,7 @@ class DBPopulate:
 
     def addCID(self, fname, lname, cid, state, party):
         if len(fname) == 1: fname = fname+'.'
+        #if "." in lname: lname = lname[3:]
         legID = self.getLegIDCID(fname, '%'+lname, state, party)
         if legID == 0:
             legID = self.getLegIDCID(fname, '%'+lname.split()[-1], state, party)
@@ -252,6 +258,15 @@ class DBPopulate:
         except:
             print "addCont Error: "+str(sys.exc_info()[0])
 
+    def insertCommittee(self, name):
+        try:
+            argument = "INSERT INTO Committee (ComName) VALUES (\""+name+"\");"
+            self.cursor.execute(argument)
+            self.cnx.commit()
+        except mysql.connector.errors.ProgrammingError as e:
+            print e
+        except:
+            print "idk "+str(sys.exc_info()[0])
 
     def insertCombo(self, fname, lname, commName):
         LegID = self.getLegID(fname,lname)

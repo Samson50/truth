@@ -1,4 +1,5 @@
 /geckodriver.log
 /ghostdriver.log
 /*.pyc
+*.pyc
 /*.csv

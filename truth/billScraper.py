@@ -15,7 +15,7 @@ def sanitize(text):
 class BillScraper:
     def __init__(self, firstCon):
         self.firstCongress = firstCon
-        #self.populator = DBPopulate()
+        self.populator = DBPopulate()
         self.driver = Driver()
         self.testing = False
         self.maxBill = 0
@@ -58,7 +58,6 @@ class BillScraper:
             lname = sanitize(' '.join(leg.split()[1:]))
             ps = spon.text.split('[')[1].split('-')[0:2]
             retCospons += [[fname, lname, ps[0], ps[1]]]
-            #self.populator.insertCosponsor(fname, lname, billID)
         return retCospons
 
     def getCommittees(self):
@@ -71,17 +70,17 @@ class BillScraper:
         actions = self.getAction(chamber)
         cosponsors = self.getCosponsor()
         committees = self.getCommittees()
-        #self.populator.insertLatest(billID, actions[0][0])
-        #for bill in realatedBills:
-        #    self.populator.insertRelatedBill(billID, bill.text.strip())
-        #for subject in subjects:
-        #    self.populator.insertBillPolicy(billID, subject.text.strip())
-        #for action in actions:
-        #   self.populator.insertAction(billID, action[0], action[1], action[2])
-        #for cosponsor in cosponsors:
-        #   self.populator.insertCosponsor(cosponsor[0], cosponsor[1], billID)
-        #for committee in committees:
-        #   self.populator.insertComboBill(billID, committee)
+        self.populator.insertLatest(billID, actions[0][0])
+        for bill in realatedBills:
+            self.populator.insertRelatedBill(billID, bill.text.strip())
+        for subject in subjects:
+            self.populator.insertBillPolicy(billID, subject.text.strip())
+        for action in actions:
+           self.populator.insertAction(billID, action[0], action[1], action[2])
+        for cosponsor in cosponsors:
+           self.populator.insertCosponsor(cosponsor[0], cosponsor[1], billID)
+        for committee in committees:
+           self.populator.insertComboBill(billID, committee)
 
     def getType(self, bid):
         if 'house-bill' in bid: return 'H.R.'
@@ -125,8 +124,7 @@ class BillScraper:
             #print billID, billName, fname, lname
             #print title
             if sponsor == '' and latest == '': return
-            #self.populator.insertBill(billID, billName, conNum, fname, lname, title)
-            #billID = self.populator.getBillID(billName, conNum)
+            self.populator.insertBill(billID, billName, conNum, fname, lname, title)
             self.getBillDetails(billID, billName[0], conNum)
         except UnboundLocalError as e:
             print "Bill: "+billLink+" Error: "+str(e)

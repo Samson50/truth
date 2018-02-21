@@ -38,13 +38,27 @@ class Driver:
         self.tree = html.fromstring(page.content)
         time.sleep(1.2)
 
+    def findElement(self, string):
+        """Return selenium elements"""
+        return self.driver.find_element_by_xpath(string)
+
+    def click(self, string):
+        """Interact with element"""
+        element = self.driver.find_element_by_xpath(string)
+        element.click()
+        self.tree = html.fromstring(self.driver.page_source)
+
     def find(self, string):
         """Parse XML Tree for *string* by XPath"""
         return self.tree.xpath(string)
 
-    def printTree(self):
+    def printTree(self, stree):
+        """Prints given tree"""
+        print html.tostring(stree)
+
+    def showTree(self):
         """Prints current tree"""
-        return html.tostring(self.tree)
+        print html.tostring(self.tree)
 
     def quit(self):
         self.driver.quit()

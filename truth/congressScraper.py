@@ -1,4 +1,4 @@
-import time
+import time, sys
 from dbPopulate import DBPopulate
 import requests
 
@@ -7,7 +7,6 @@ from webDriver import Driver
 class CongressScraper:
     def __init__(self):
         self.populator = DBPopulate()
-        self.ua = UserAgent()
         self.important_index = 0
         self.congr = {}
         self.testing = True
@@ -24,44 +23,8 @@ class CongressScraper:
                           'FEDERATED STATES OF MICRONESIA':'FM','MARSHALL ISLANDS':'MH'}
         self.driver = Driver()
 
-
-    def addCID(self):
-        self.fetch("https://www.opensecrets.org/members-of-congress/members-list?cong_no=115&cycle=2018")
-        for p in range(0,11):
-            persons = self.driver.find('//table[@id="DataTables_Table_0"]/tbody/tr/td/a')
-            states = self.driver.find('//table[@id="DataTables_Table_0"]/tbody/tr/td[2]')
-            parties = self.driver.find('//table[@id="DataTables_Table_0"]/tbody/tr/td[3]')
-            for p in range(len(persons)):
-                cid = int(persons[p].get_attribute('href').split('=')[1][1:].split('&')[0])
-                name = persons[p].text.strip()
-                name = name.split(', ')[1]+" "+name.split(', ')[0]
-                fname = name.split()[0]
-                lname = ' '.join(name.split()[1:])
-                if len(lname.split()) > 1 and len(lname.split()[0]) == 1:
-                    lname = lname.split()[0]+". "+' '.join(lname.split()[1:])
-                state = self.stateDict[states[p].text.strip().upper()]
-                party = parties[p].text.strip()
-                self.populator.addCID(fname, lname, cid, state, party)
-            button = self.driver.find('//div[@id="DataTables_Table_0_paginate"]/a[2]')[0]
-            button.click()
-
-    def addCommittee(self):
-        self.fetch('http://clerk.house.gov/committee_info/oal.aspx')
-        committees = self.driver.find('//div/table/tbody/tr/td')#[0].text.split('\n')
-        for c in range(0, len(committees)/2):
-            names = committees[c*2].text.split(', ')
-            fname = names[1]
-            lname = names[0]
-            comms = [com[:-1] for com in committees[c*2+1].text.split('\n')]
-            name = fname + ' ' + lname
-            if name in self.congr.keys() and '' not in comms:
-                self.congr[name]['committees'] = comms
-
-
     def addCongress(self, person):
         vals = {}
-        #vals['link'] = link
-        #data = box.xpath('div/span')
         data = person.xpath('div[2]/div/span')
         name = person.xpath('span/a')[0].text
         name = name.split(', ')[1]+' '+ ' '.join(name.split(', ')[0].split()[1:])
@@ -71,9 +34,7 @@ class CongressScraper:
             pic = "https://www.congress.gov/" + str(person.xpath('div/div/img')[0].attrib['src'])
         except:
             pic = "none"
-            #print "pic: "+name
         vals['pic'] = pic
-        #dat = person.xpath('/div[2]/div/span')
         for dat in data:
             da = dat.getchildren()
             if 'Served:' in da[0].text:
@@ -87,36 +48,118 @@ class CongressScraper:
             elif 'District:' in da[0].text:
                 vals[da[0].text.strip().lower()] = int(da[1].text.strip())
             else:
-                #print da[0].text.strip().lower()
-                #print da[1].text.strip()
                 vals[da[0].text.strip().lower()[:-1]] = da[1].text.strip()
         self.congr[name] = vals
 
     def scrapePage(self, target):
-        #TODO: Finish this implementation
+        m = 550
         self.driver.fetch(target)
-        #names = self.find('//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/span/a')
         people = self.driver.find('//li[@class="expanded"]')#//div[@class="quick-search-member"]')
-        #links = [link.attrib['href'] for link in names]
-        #names = [name.text for name in names]
-        #names = [name.split(', ')[1]+' '+ ' '.join(name.split(', ')[0].split()[1:]) for name in names]
-        #pics = self.find('//ol[@class="basic-search-results-lists expanded-view"]/li[@class="expanded"]/span/')
-        #boxes = self.find('//li[@class="expanded"]//div[@class="quick-search-member"]')
-        #for x in range(0, len(names)):
         for x in range(0, len(people)):
+            currentItem = len(self.congr.keys())*1.0
+            sys.stdout.write("\rProgress: [\%{0:2.1f}]\r".format(100*currentItem/m))
+            sys.stdout.flush()
             self.addCongress(people[x])
-            #self.addCongress(names[x], links[x], boxes[x])
+
+    def addCommittee(self):
+        errs = 0
+        self.driver.fetch('http://clerk.house.gov/committee_info/oal.aspx')
+        committees = self.driver.find('//div/table/tbody/tr')[1:]#[0].text.split('\n')
+        for c in committees:
+            try:
+                names = c.xpath('td[1]')[0].text.split(', ')
+                if len(names) == 1: names = c.xpath('td[1]/em')[0].text.split(', ')
+                fname = names[1]
+                lname = names[0]
+                comms = [com.strip()[:-1] for com in c.xpath('td[2]/text()')]
+                name = fname + ' ' + lname
+                if name in self.congr.keys() and '' not in comms:
+                    self.congr[name]['committees'] = comms
+            except:
+                errs+=1
+                sys.stderr.write('Delegates ignored: '+str(errs)+'\r')
+        sys.stdout.write("\n")
+        sys.stdout.flush()
 
     def getCongress(self):
+        print "Requesting Legislator Data"
         self.scrapePage("https://www.congress.gov/members?q=%7B%22congress%22%3A%22115%22%7D&pageSize=250&page=1")
         self.scrapePage("https://www.congress.gov/members?q=%7B%22congress%22%3A%22115%22%7D&pageSize=250&page=2")
         self.scrapePage("https://www.congress.gov/members?q=%7B%22congress%22%3A%22115%22%7D&pageSize=250&page=3")
+        sys.stdout.write("\n")
+        sys.stdout.flush()
         self.addCommittee()
 
+    def addCID(self):
+        print "Getting Legislator CID"
+        self.driver.fetch("https://www.opensecrets.org/members-of-congress/members-list?cong_no=115&cycle=2018")
+        m = 536
+        currentItem = 1.0
+        for p in range(0,11):
+            persons = self.driver.find('//table[@id="DataTables_Table_0"]/tbody/tr')
+            for person in persons:
+                sys.stdout.write("\rProgress: [\%{0:2.1f}]\r".format(100*currentItem/m))
+                sys.stdout.flush()
+                currentItem+=1
+                cid = int(person.xpath('td[1]/a/@href')[0].split('=')[1][1:].split('&')[0])
+                name = person.xpath('td[1]/a/text()')[0].strip()
+                name = name.split(', ')[1]+" "+name.split(', ')[0]
+                fname = name.split()[0]
+                lname = ' '.join(name.split()[1:])
+                if len(lname.split()) > 1 and len(lname.split()[0]) == 1:
+                    lname = lname.split()[0]+". "+' '.join(lname.split()[1:])
+                state = self.stateDict[person.xpath('td[2]/text()')[0].strip().upper()]
+                party = person.xpath('td[3]/text()')[0].strip()
+                self.populator.addCID(fname, lname, cid, state, party)
+            self.driver.click('//div[@id="DataTables_Table_0_paginate"]/a[2]')
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+
+    def getContributors(self, legID, cid, cycle): #padd cid string as necessary
+        self.driver.fetch("https://www.opensecrets.org/members-of-congress/summary?cid=N"+str(cid).zfill(8)+"&cycle="+str(cycle)+"&type=C")
+        individuals = self.driver.find("//body/div/div/div/div/div/div[3]/div[2]/table/tbody/tr") #top indiv
+        industries = self.driver.find("//body/div/div/div/div/div/div[3]/div[4]/table/tbody/tr") #top indus
+        for x in range(0,len(individuals)):
+            individual = individuals[x].xpath('td')
+            conID = self.populator.getContributor(individual[0].text, 0)
+            self.populator.insertContribution(legID, conID, ''.join(individual[1].text[1:].split(',')), 0, cycle)
+            self.populator.insertContribution(legID, conID, ''.join(individual[2].text[1:].split(',')), 1, cycle)
+            self.populator.insertContribution(legID, conID, ''.join(individual[3].text[1:].split(',')), 2, cycle)
+        for x in range(0,len(industries)):
+            industry = industries[x].xpath('td')
+            conID = self.populator.getContributor(industry[0].text, 1)
+            self.populator.insertContribution(legID, conID, ''.join(industry[1].text[1:].split(',')), 0, cycle)
+            self.populator.insertContribution(legID, conID, ''.join(industry[2].text[1:].split(',')), 1, cycle)
+            self.populator.insertContribution(legID, conID, ''.join(industry[3].text[1:].split(',')), 2, cycle)
+
+    def getMoney(self):
+        print "Getting contributions"
+        #select legID, CID from legislator where not isnull(cid);
+        legData = self.populator.getContInfo()
+        m = len(legData)
+        currentItem = 1.0
+        for datum in legData:
+            #print datum
+            sys.stdout.write("\rProgress: [\%{0:2.1f}]\r".format(100*currentItem/m))
+            sys.stdout.flush()
+            self.getContributors(datum[0], datum[1], 2018)
+            currentItem+=1
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+        print "Contributions finished"
+
     def populateDB(self):
-        print "Populating Legislator table"
         self.getCongress()
+        print "Populating Legislator table"
+        m = len(self.congr)
+        currentItem = 1.0
+
         for name in self.congr:
+
+            sys.stdout.write("\rProgress: [\%{0:2.1f}]\r".format(100*currentItem/m))
+            sys.stdout.flush()
+            currentItem += 1
+
             fname = name.split()[0]
             lname = ' '.join(name.split()[1:])
             if '"' in lname:
@@ -152,41 +195,11 @@ class CongressScraper:
                     if 'House ' in comm:
                         comm = ' '.join(comm.split()[1:])
                     self.populator.insertCombo(fname,lname,comm)
-        print "Getting Legislator CID"
+        sys.stdout.write("\n")
+        sys.stdout.flush()
         self.addCID()
         self.getMoney()
         print "Legilator table populated"
-
-    def getContributors(self, legID, cid, cycle): #padd cid string as necessary
-        self.driver.fetch("https://www.opensecrets.org/members-of-congress/summary?cid=N"+str(cid).zfill(8)+"&cycle="+str(cycle)+"&type=C")
-        #print "Tree"
-        #print tostring(self.tree)
-        individuals = self.driver.find("//body/div/div/div/div/div/div[3]/div[2]/table/tbody/tr") #top indiv
-        industries = self.driver.find("//body/div/div/div/div/div/div[3]/div[4]/table/tbody/tr") #top indus
-        for x in range(0,len(individuals)):
-            individual = individuals[x].xpath('td')
-            #print individual[0].text
-            conID = self.populator.getContributor(individual[0].text, 0)
-            self.populator.insertContribution(legID, conID, ''.join(individual[1].text[1:].split(',')), 0, cycle)
-            self.populator.insertContribution(legID, conID, ''.join(individual[2].text[1:].split(',')), 1, cycle)
-            self.populator.insertContribution(legID, conID, ''.join(individual[3].text[1:].split(',')), 2, cycle)
-        for x in range(0,len(industries)):
-            industry = industries[x].xpath('td')
-            #print industry[0].text
-            conID = self.populator.getContributor(industry[0].text, 1)
-            self.populator.insertContribution(legID, conID, ''.join(industry[1].text[1:].split(',')), 0, cycle)
-            self.populator.insertContribution(legID, conID, ''.join(industry[2].text[1:].split(',')), 1, cycle)
-            self.populator.insertContribution(legID, conID, ''.join(industry[3].text[1:].split(',')), 2, cycle)
-
-    def getMoney(self):
-        print "Getting contributions"
-        #select legID, CID from legislator where not isnull(cid);
-        legData = self.populator.getContInfo()
-        for datum in legData:
-            #print datum
-            self.getContributors(datum[0], datum[1], 2018)
-        print "Contributions finished"
-
 
     def runTest(self):
         self.addCID()
@@ -197,7 +210,7 @@ class CongressScraper:
 
 #test = CongressScraper()
 #run = time.time()
-#test.getMoney()
+#test.runTest()
 #end = time.time()
 #print "Test completed in %0.3f seconds." % ((end-run))
 #test.close()
