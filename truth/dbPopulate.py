@@ -283,7 +283,7 @@ class DBPopulate:
         except:
             print "idk "+str(sys.exc_info()[0])
 
-    def insertBill(self,billID, name, con, fname, lname, summary, date):
+    def insertBill(self,billID, name, con, fname, lname, summary):
         spon = self.getLegID(fname,lname)
         try:
             argument = ("INSERT INTO Bill "
@@ -315,7 +315,7 @@ class DBPopulate:
         #actDate = date.split('/')[2]+'-'+date.split('/')[0]+'-'+date.split('/')[1]
         try:
             argument = ("INSERT INTO Action (ActionDate, ActionBy, BillID, ActionStr)"
-                                "VALUES (\""+actDate+"\", \""+actBy+"\", "+str(BillID)+", \""+action+"\");")
+                                "VALUES (\""+date+"\", \""+actBy+"\", "+str(BillID)+", \""+action+"\");")
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
@@ -327,11 +327,11 @@ class DBPopulate:
         latestID = int("".join(Date.split("-")))*100000+(int(BillID)%100000)
         try:
             argument = ("INSERT INTO Latest (LatestID, BillID, LatestDate)"
-                            "VALUES ("+latestID+","+BillID+",\""+Date+"\");")
+                            "VALUES ("+str(latestID)+","+str(BillID)+",\""+Date+"\");")
             self.cursor.execute(argument)
             self.cnx.commit()
         except mysql.connector.errors.ProgrammingError as e:
-            print "Latest Action error for: "+str(BillID)+" Date: "+Date
+            print "Latest Action error for: "+str(BillID)+" Date: "+Date+" Error: "+str(e)
         except:
             print "Latest Action Error: "+str(sys.exc_info()[0])
 

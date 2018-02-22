@@ -317,6 +317,7 @@ class DBManager:
         self.createPolicyAreas()
         self.createMoney()
         self.createContributor()
+        self.createLatest()
         print "All Tables Created"
 
     def recreateAll(self):

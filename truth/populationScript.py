@@ -15,22 +15,21 @@ def fillCongress():
 
 def backupDB():
     DB_USER = raw_input("User Name: ")
-    DB_PASSWORD = raw_input("Password: ")
     DB_NAME = raw_input("Database: ")
     BACKUPPATH = os.getcwd()
     BACKUP_NAME = raw_input("Backup Name: ")
-    dumpcmd = "mysqldump -u "+DB_USER+" -p "+DB_PASSWORD+" "+DB_NAME+" > "+BACKUPPATH+"\\"+BACKUP_NAME+".sql"
+    os.chdir("C:\\Program Files\\MySQL\\MySQL Server 5.7\\bin")
+    dumpcmd = "mysqldump -u "+DB_USER+" -p "+DB_NAME+" > "+BACKUPPATH+"\\"+BACKUP_NAME+".sql"
     os.system(dumpcmd)
 
 def restoreDB():
     DB_USER = raw_input("User Name: ")
-    DB_PASSWORD = raw_input("Password: ")
     DB_NAME = raw_input("Database: ")
     BACKUPPATH = os.getcwd()
     BACKUP_NAME = raw_input("Backup Name: ")
-    #os.chdir("C:\\Program Files\\MySQL\\MySQL Server 5.7\\bin")
-    dumpcmd = "mysqldump -u "+DB_USER+" -p "+DB_PASSWORD+" "+DB_NAME+" < "+BACKUPPATH+"\\"+BACKUP_NAME+".sql"
-    os.system(dumpcmd)
+    os.chdir("C:\\Program Files\\MySQL\\MySQL Server 5.7\\bin")
+    restcmd = "mysql -u "+DB_USER+" -p "+DB_NAME+" < "+BACKUPPATH+"\\"+BACKUP_NAME+".sql"
+    os.system(restcmd)
 
 #mysqldump -u root -p --databases federal > fed_bu.sql
 #mysql -u root -p  federal < fed_bu.sql
@@ -41,3 +40,4 @@ def restoreDB():
 #import os
 #dumpcmd = "mysqldump -u "+DB_USER+" -p "+DB_PASSWORD+" "+DB_NAME+" > "+BACKUPPATH+"/"+BACKUP_NAME+".sql"
 #os.system(dumpcmd)
+restoreDB()

@@ -76,11 +76,11 @@ class BillScraper:
         for subject in subjects:
             self.populator.insertBillPolicy(billID, subject.text.strip())
         for action in actions:
-           self.populator.insertAction(billID, action[0], action[1], action[2])
+            self.populator.insertAction(billID, action[0], action[1], action[2])
         for cosponsor in cosponsors:
-           self.populator.insertCosponsor(cosponsor[0], cosponsor[1], billID)
+            self.populator.insertCosponsor(cosponsor[0], cosponsor[1], billID)
         for committee in committees:
-           self.populator.insertComboBill(billID, committee)
+            self.populator.insertComboBill(billID, committee)
 
     def getType(self, bid):
         if 'house-bill' in bid: return 'H.R.'
@@ -139,6 +139,7 @@ class BillScraper:
         t_index = {0:'bill',1:'amendment',2:'resolution',3:'concurrent-resolution',4:'joint-resolution'}
         i = 0
         totTime = 0.0
+        print "Opening {0}-{1}.csv".format(fcon,lcon)
         with open("conr"+str(fcon)+"-"+str(lcon)+".csv", "rb") as condat:
             conrows = csv.reader(condat)#, delimiter=' ', quotechar='|')
             for row in conrows:
@@ -215,7 +216,7 @@ class BillScraper:
 
 
     def runTest(self):
-        self.getMaxes(104,115)
+        self.getMaxes(112,114)
 
     def close(self):
         self.driver.quit()
@@ -223,7 +224,7 @@ class BillScraper:
 test = BillScraper(107)
 test.testing = True
 run = time.time()
-test.runTest()
+test.getCongressFile(112,114)
 end = time.time()
 print "Test completed in %0.3f seconds." % ((end-run))
 test.close()
